@@ -1,0 +1,11 @@
+{
+    "subjectName": "braincoder-comparison",
+    "sessionName": "1",
+    "solver":      "popeye",
+    "options": {
+        "seed":         2764932,
+        "grid_density": 3,
+        "fixed_hrf":    false,
+        "multiprocess": true
+    }
+}
