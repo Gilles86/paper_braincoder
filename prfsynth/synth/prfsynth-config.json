@@ -71,7 +71,5 @@
     "lowfrequ_amplitude":0.01,
     "lowfrequ_frequ":120
     }
-    ],
-    "NumWorkers":16
-    }
+    ]
     ]
