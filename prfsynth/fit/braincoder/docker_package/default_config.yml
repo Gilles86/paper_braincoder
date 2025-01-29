@@ -1,0 +1,26 @@
+seed: 2764932
+verbose: true
+model:
+  model_type: 'Gauss'
+  hrf:
+fitting:
+  gauss_bounds:
+    mu_x:
+      lower: -10
+      upper: 10
+      n_steps: 20
+    mu_y:
+      lower: -10
+      upper: 10
+      n_steps: 20
+    sd:
+      lower: 2.
+      upper: 10
+      n_steps: 5
+  n_gd_iterations: 1000
+synth:
+  origin: 'prfsynth' # prfpy
+  tr: 1
+  stimulus_width_degrees: 2
+  width: 20
+  height: 20
