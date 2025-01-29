@@ -1,0 +1,21 @@
+{
+    "subjectName"    : "editThis",
+    "sessionName"    : "editThis",
+    "solver"         : "vista",
+    "tasks"          : "[all]",
+    "isPRFSynthData" : false,
+    "options": {
+    	"prfprepareAnalysis" : "01",
+        "hrf": [],
+        "model"              : "one gaussian",
+        "grid"               :  false,
+        "wsearch"            : "coarse to fine",
+        "detrend"            : 1,
+        "keepAllPoints"      : false,
+        "numberStimulusGridPoints": 50,
+        "coarseDecimate": 2
+    },
+    "stimulus": {
+    	"fieldofviewHorz":14
+    }
+}

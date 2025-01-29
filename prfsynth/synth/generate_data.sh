@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=synthesize_data          # Job name
-#SBATCH --output=logs/syntehsize_data_prfsynth_%j.out    # Standard output log (%j will be replaced by the job ID)
+#SBATCH --output=logs/synthesize_data_prfsynth_%j.out    # Standard output log (%j will be replaced by the job ID)
 #SBATCH --time=1:00:00                   # Time limit (hh:mm:ss)
 #SBATCH --nodes=16                       # Number of nodes
 #SBATCH --ntasks=16                      # Number of tasks (1 per node by default)
@@ -10,16 +10,17 @@
 # Load Singularity module (adjust as needed for your system)
 module load singularityce
 
-# Default base directory
+# Default base directory and script directory
 DEFAULT_BASEDIR="/shares/zne.uzh/gdehol/ds-prfsynth"
 SCRIPT_DIR=/home/gdehol/git/paper_braincoder/prfsynth/synth
+DEFAULT_CONFIG_FILE="$SCRIPT_DIR/prfsynth-config.json"
 
-# Allow basedir to be overridden by an argument
-basedir=${1:-$DEFAULT_BASEDIR}
+# Allow basedir and config file to be overridden by arguments
+config_file=${1:-$DEFAULT_CONFIG_FILE}
+basedir=${2:-$DEFAULT_BASEDIR}
 
-# Define the Singularity image and run command
+# Define the Singularity image and output directory
 SIF_IMAGE="/shares/zne.uzh/containers/prfsynth_latest.sif"
-CONFIG_FILE="$SCRIPT_DIR/prfsynth-config.json"
 OUTPUT_DIR="$basedir"
 
 # Ensure the base directory exists
@@ -29,14 +30,14 @@ if [[ ! -d "$basedir" ]]; then
 fi
 
 # Ensure the config file exists
-if [[ ! -f "$CONFIG_FILE" ]]; then
-    echo "Error: Config file $CONFIG_FILE does not exist in $SCRIPT_DIR."
+if [[ ! -f "$config_file" ]]; then
+    echo "Error: Config file $config_file does not exist."
     exit 1
 fi
 
 # Run the Singularity command
 singularity exec --cleanenv \
-    --bind "$CONFIG_FILE:/flywheel/v0/input/config.json" \
+    --bind "$config_file:/flywheel/v0/input/config.json" \
     --bind "$OUTPUT_DIR:/flywheel/v0/output" \
     "$SIF_IMAGE" /flywheel/v0/run
 

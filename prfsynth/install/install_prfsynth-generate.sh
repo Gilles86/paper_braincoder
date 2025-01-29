@@ -24,6 +24,8 @@ mkdir -p "$TARGET_DIR"
 # Change to the target directory
 cd "$TARGET_DIR"
 
+echo "Singularity-cache dir: $SINGULARITY_CACHEDIR"
+
 # Pull the Singularity image
 srun singularity pull "$IMAGE_NAME" "$DOCKER_IMAGE"
 
