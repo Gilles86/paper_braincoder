@@ -1,7 +1,7 @@
-# Use a lightweight base image for ARM64
+# Use a lightweight base image
 FROM ubuntu:20.04
 
-# Set environment variables to prevent interactive prompts during installation
+# Set environment variables to prevent interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install required system dependencies
@@ -17,8 +17,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxrender1 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Download and install Miniconda for ARM64
-RUN wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh -O /tmp/miniconda.sh && \
+# Detect architecture and install the correct Miniconda version
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then \
+        wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh; \
+    else \
+        wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh -O /tmp/miniconda.sh; \
+    fi && \
     bash /tmp/miniconda.sh -b -p /opt/miniconda && \
     rm /tmp/miniconda.sh
 
@@ -30,8 +35,7 @@ RUN conda update -n base -c defaults conda && \
     conda create -y -n neuro python=3.9
 
 # Activate environment and install Python packages
-RUN /bin/bash -c "source activate neuro && \
-    conda install -y -n neuro -c conda-forge \
+RUN /opt/miniconda/bin/conda run -n neuro conda install -y -c conda-forge \
         pandas=1.4 \
         matplotlib=3.5 \
         scikit-learn=1.0 \
@@ -43,25 +47,24 @@ RUN /bin/bash -c "source activate neuro && \
         pyyaml=6.0 \
         tqdm=4.62 \
         numpy=1.23.5 \
-        && conda clean --all -y"
+        && conda clean --all -y
 
 # Install additional Python packages via pip
-RUN /opt/miniconda/envs/neuro/bin/pip install git+https://github.com/Gilles86/braincoder.git@edf1c5d3ab921121ee7642adc95fb40898d00620
+RUN /opt/miniconda/bin/conda run -n neuro pip install git+https://github.com/Gilles86/braincoder.git@edf1c5d3ab921121ee7642adc95fb40898d00620
 
-
-# Copy the entrypoint script
+# Copy necessary files
 COPY entrypoint.sh /entrypoint.sh
 COPY run.py /run.py
 COPY version /version
 
-# Ensure the entrypoint script is executable
+# Ensure entrypoint script is executable
 RUN chmod +x /entrypoint.sh
-
-# Set the entrypoint to the script
-ENTRYPOINT ["/entrypoint.sh"]
 
 # Set the working directory
 WORKDIR /workspace
+
+# Set the entrypoint to the script
+ENTRYPOINT ["/entrypoint.sh"]
 
 # Default command to keep the container running
 CMD ["bash"]
