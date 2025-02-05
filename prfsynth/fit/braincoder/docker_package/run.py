@@ -9,8 +9,6 @@ import pandas as pd
 import numpy as np
 import yaml
 
-
-
 __version__ = open(op.join(op.dirname(op.realpath(__file__)),
                                 'version')).read()
 
@@ -80,7 +78,8 @@ paradigm = image.load_img(paradigm).get_fdata()
 
 # Get rid of the third axis and put the last axis (time) first without changing order of 0,1
 # paradigm = np.moveaxis(paradigm, 2, 0).squeeze()
-paradigm = np.moveaxis(paradigm.squeeze(), -1, 0)
+# paradigm = np.moveaxis(paradigm.squeeze(), -1, 0)
+paradigm = np.transpose(paradigm.squeeze(), (2,1,0))
 
 print(paradigm.shape)
 
@@ -97,7 +96,7 @@ dy = height_degrees / height_pixels
 x_degrees = np.linspace(-width_degrees / 2 + dx / 2, width_degrees / 2 - dx / 2, width_pixels)
 y_degrees = np.linspace(-height_degrees / 2 + dy / 2, height_degrees / 2 - dy / 2, height_pixels)
 
-x_mesh, y_mesh = np.meshgrid(x_degrees, y_degrees)
+y_mesh, x_mesh = np.meshgrid(y_degrees, x_degrees)
 
 # Flatten the meshgrid and create a DataFrame
 grid_coordinates = pd.DataFrame({'x': x_mesh.ravel(), 'y': y_mesh.ravel()}).astype(np.float32)
@@ -145,7 +144,10 @@ pars_gauss_ols = par_fitter.refine_baseline_and_amplitude(pars_gauss_grid, l2_al
 
 print(pars_gauss_ols)
 
+
+
 pars_gauss_gd = par_fitter.fit(init_pars=pars_gauss_ols, max_n_iterations=opts['fitting']['n_gd_iterations'])
+
 print(pars_gauss_gd)
 r2_gauss_gd = par_fitter.get_rsq(pars_gauss_gd)
 pred = model_gauss.predict(parameters=pars_gauss_gd)
