@@ -44,8 +44,13 @@ print(args)
 
 with open(args.config_file, 'r') as f:
     opts = yaml.safe_load(f)
-print(opts)
 
+
+pars = {'x':'centerx0', 'y':'centery0', 'sd':'sigmamajor', 'amplitude':'beta', 'baseline':'baseline'}
+
+if opts['fitting']['fit_hrf']:
+    pars['hrf_delay'] = 'hrf_delay'
+    pars['hrf_dispersion'] = 'hrf_dispersion'
 
 assert(len(args.participant_label) == 1), 'Currently only one participant can be analyzed at a time.'
 subject_id = args.participant_label[0]
@@ -54,7 +59,7 @@ subject_dir = op.join(args.bids_dir, f'sub-{subject_id}')
 # make sure there is only one session in there and it's session 1:
 sessions = [f for f in os.listdir(subject_dir) if f.startswith('ses-')]
 assert(len(sessions) == 1), 'Only one session is allowed for now'
-session = sessions[0]
+session = sessions[0][4:]
 
 data = op.join(args.bids_dir, f'sub-{subject_id}', 'ses-1', 'func', f'sub-{subject_id}_ses-1_task-prf_acq-normal_run-01_bold.nii.gz')
 
@@ -91,15 +96,18 @@ dy = height_degrees / height_pixels
 # Generate degree arrays for x and y axes
 x_degrees = np.linspace(-width_degrees / 2 + dx / 2, width_degrees / 2 - dx / 2, width_pixels)
 y_degrees = np.linspace(-height_degrees / 2 + dy / 2, height_degrees / 2 - dy / 2, height_pixels)
-y_mesh, x_mesh = np.meshgrid(y_degrees[::-1], x_degrees)
+
+x_mesh, y_mesh = np.meshgrid(x_degrees, y_degrees)
 
 # Flatten the meshgrid and create a DataFrame
 grid_coordinates = pd.DataFrame({'x': x_mesh.ravel(), 'y': y_mesh.ravel()}).astype(np.float32)
 
+print(grid_coordinates)
+
 from braincoder.models import GaussianPRF2DWithHRF
 from braincoder.hrf import SPMHRFModel
 hrf_model = SPMHRFModel(tr=float(opts['synth']['tr']))
-model_gauss = GaussianPRF2DWithHRF(data=data, paradigm=paradigm, hrf_model=hrf_model, grid_coordinates=grid_coordinates)
+model_gauss = GaussianPRF2DWithHRF(data=data, paradigm=paradigm, hrf_model=hrf_model, grid_coordinates=grid_coordinates, flexible_hrf_parameters=opts['fitting']['fit_hrf'])
 
 from braincoder.optimize import ParameterFitter
 par_fitter = ParameterFitter(model=model_gauss, data=data, paradigm=paradigm)
@@ -113,12 +121,22 @@ sd = np.linspace(bounds['sd']['lower'], bounds['sd']['upper'], bounds['sd']['n_s
 # We start the grid search using a correlation cost, so ampltiude
 # and baseline do not influence those results.
 # We will optimize them later using OLS.
-baseline = [0.0]
+baseline = [1e-6]
 amplitude = [1.0]
+hrf_delay = [6]
+hrf_dispersion = [1]
 
 # Now we can do the grid search
 
-pars_gauss_grid = par_fitter.fit_grid(x, y, sd, baseline, amplitude, correlation_cost=True)
+print(f'x: {x}')
+print(f'y: {y}')
+print(f'sd: {sd}')
+
+
+if opts['fitting']['fit_hrf']:
+    pars_gauss_grid = par_fitter.fit_grid(x, y, sd, baseline, amplitude, hrf_delay, hrf_dispersion, use_correlation_cost=True)
+else:
+    pars_gauss_grid = par_fitter.fit_grid(x, y, sd, baseline, amplitude, use_correlation_cost=True)
 
 print(pars_gauss_grid)
 
@@ -142,22 +160,20 @@ def save_as_nifti(data, masker, output_dir, filename):
 
 def save_final_results(results, masker, output_dir):
     """Save fitted parameters to NIfTI files."""
-    final_res = {
-        'centerx0': results['x'],
-        'centery0': results['y'],
-        'sigmamajor': results['sd'],
-        'sigmaminor': results['sd'],
-        'beta': results['amplitude'],
-        'baseline': results['baseline']
-    }
+    final_res = {}
+
+    for source_par, target_par in pars.items():
+        final_res[target_par] = results[source_par]
+
     for attr_name, attr_data in final_res.items():
-        save_as_nifti(attr_data, masker, output_dir, f'{attr_name}.nii.gz')
+        fn = f'sub-{subject_id}_ses-{session}_task-prf_{attr_name}.nii.gz'
+        save_as_nifti(attr_data, masker, output_dir, fn)
 
 if (args.output_dir):
-    output_dir = os.path.join(args.output_dir[0], f"prfanalyze-braincoder/sub-{subject_id}/ses-{session}/")
+    output_dir = os.path.join(args.output_dir[0], f"sub-{subject_id}/ses-{session}/")
 else:
     output_dir = os.path.join(args.bids_dir, f"derivatives/prfanalyze-braincoder/sub-{subject_id}/ses-{session}/")
 
 save_final_results(pars_gauss_gd, masker, output_dir=output_dir)
-save_as_nifti(pred, masker=masker, output_dir=output_dir, filename='modelpred.nii.gz')
-save_as_nifti(r2_gauss_gd, masker, output_dir=output_dir, filename='r2.nii.gz')
+save_as_nifti(pred, masker=masker, output_dir=output_dir, filename=f'sub-{subject_id}_ses-{session}_task-prf_modelpred.nii.gz')
+save_as_nifti(r2_gauss_gd, masker, output_dir=output_dir, filename=f'sub-{subject_id}_ses-{session}_task-prf_r2.nii.gz')

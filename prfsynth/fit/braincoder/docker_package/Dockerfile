@@ -1,70 +1,64 @@
-# Use a lightweight base image
-FROM ubuntu:20.04
+# Use official TensorFlow GPU image (preconfigured with CUDA/cuDNN)
+FROM nvidia/cuda:12.6.3-cudnn-devel-ubuntu22.04
 
-# Set environment variables to prevent interactive prompts
-ENV DEBIAN_FRONTEND=noninteractive
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive \
+    TF_FORCE_GPU_ALLOW_GROWTH=true \
+    PATH="/opt/miniconda/bin:$PATH" \
+    LD_LIBRARY_PATH="/usr/local/cuda/lib64:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH" \
+    CUDA_HOME="/usr/local/cuda" \
+    PYTHONPATH="/opt/miniconda/envs/neuro/lib/python3.10/site-packages:$PYTHONPATH" \
+    TF_CPP_MIN_LOG_LEVEL=2
 
-# Install required system dependencies
+# Install essential system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget \
-    git \
-    build-essential \
-    bzip2 \
-    ca-certificates \
-    libglib2.0-0 \
-    libxext6 \
-    libsm6 \
-    libxrender1 \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    wget git build-essential \
+    bzip2 ca-certificates libglib2.0-0 libxext6 libsm6 libxrender1 \
+    pciutils curl && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Detect architecture and install the correct Miniconda version
-RUN ARCH=$(uname -m) && \
-    if [ "$ARCH" = "x86_64" ]; then \
-        wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh; \
-    else \
-        wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh -O /tmp/miniconda.sh; \
-    fi && \
+# Install Miniconda & Mamba
+RUN wget -qO /tmp/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
     bash /tmp/miniconda.sh -b -p /opt/miniconda && \
-    rm /tmp/miniconda.sh
+    rm -f /tmp/miniconda.sh
 
-# Add Miniconda to PATH
-ENV PATH="/opt/miniconda/bin:$PATH"
+# Install Mamba & zstandard
+RUN /opt/miniconda/bin/conda install -n base -c conda-forge mamba zstandard
 
-# Update conda and create a new environment
-RUN conda update -n base -c defaults conda && \
-    conda create -y -n neuro python=3.9
+# Create Conda environment
+RUN /opt/miniconda/bin/mamba create -y -n neuro -c conda-forge -c nvidia \
+    python=3.10 \
+    pandas=1.5 \
+    matplotlib=3.7 \
+    scikit-learn=1.3 \
+    seaborn=0.12 \
+    ipython=8.12 \
+    nilearn=0.10 \
+    pyyaml=6.0 \
+    tqdm=4.66 \
+    numpy=1.26
 
-# Activate environment and install Python packages
-RUN /opt/miniconda/bin/conda run -n neuro conda install -y -c conda-forge \
-        pandas=1.4 \
-        matplotlib=3.5 \
-        scikit-learn=1.0 \
-        seaborn=0.11 \
-        ipython=7.31 \
-        tensorflow=2.9 \
-        tensorflow-probability=0.17 \
-        nilearn=0.9 \
-        pyyaml=6.0 \
-        tqdm=4.62 \
-        numpy=1.23.5 \
-        && conda clean --all -y
+# Install TensorFlow Probability (since it's missing in the base image)
+RUN /opt/miniconda/bin/conda run -n neuro pip install --no-cache-dir tensorflow[and-cuda] tensorflow-probability tf-keras
+
+# Clean up Conda cache to reduce image size
+RUN /opt/miniconda/bin/conda clean --all -y
 
 # Install additional Python packages via pip
-RUN /opt/miniconda/bin/conda run -n neuro pip install git+https://github.com/Gilles86/braincoder.git@edf1c5d3ab921121ee7642adc95fb40898d00620
+RUN /opt/miniconda/bin/conda run -n neuro pip install --no-cache-dir \
+    git+https://github.com/Gilles86/braincoder.git@edf1c5d3ab921121ee7642adc95fb40898d00620
 
-# Copy necessary files
+# Copy necessary scripts and set permissions
 COPY entrypoint.sh /entrypoint.sh
 COPY run.py /run.py
 COPY version /version
-
-# Ensure entrypoint script is executable
 RUN chmod +x /entrypoint.sh
 
-# Set the working directory
+# Set working directory
 WORKDIR /workspace
 
-# Set the entrypoint to the script
+# Define entrypoint
 ENTRYPOINT ["/entrypoint.sh"]
 
-# Default command to keep the container running
+# Default command
 CMD ["bash"]

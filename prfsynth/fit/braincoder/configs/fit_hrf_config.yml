@@ -8,16 +8,17 @@ fitting:
     mu_x:
       lower: -10
       upper: 10
-      n_steps: 20
+      n_steps: 25
     mu_y:
       lower: -10
       upper: 10
-      n_steps: 20
+      n_steps: 25
     sd:
       lower: 2.
       upper: 10
-      n_steps: 5
-  n_gd_iterations: 100
+      n_steps: 20
+  n_gd_iterations: 1000
+  fit_hrf: true
 synth:
   origin: 'prfsynth' # prfpy
   tr: 1
