@@ -1,0 +1,10 @@
+{
+    "subjectName": "smallgrid",
+    "sessionName": "1",
+    "solver":      "afni",
+    "options": {
+                 "hrf":"SPM",
+                 "model":"simpleafni"
+
+    }
+}
