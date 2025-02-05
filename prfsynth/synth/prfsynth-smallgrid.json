@@ -29,10 +29,10 @@
     ],
     "RF":[
     {
-    "Centerx0":[-15, -10, -5, 0, 5, 10, 15],
-    "Centery0":[-15, -10, -5, 0, 5, 10, 15],
+    "Centerx0":[-6, -4, -2, 0, 2, 4, 6],
+    "Centery0":[-6, -4, -2, 0, 2, 4, 6],
     "Theta":0,
-    "sigmaMajor":[2, 4, 6],
+    "sigmaMajor":[1, 2, 3, 4, 5],
     "sigmaMinor":"same",
     "dog_sigmaMajor":2,
     "dog_sigmaMinor":2,

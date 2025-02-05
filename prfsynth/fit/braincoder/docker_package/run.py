@@ -76,9 +76,7 @@ data.index.name = 'time'
 paradigm = op.join(args.bids_dir, 'stimuli', f'sub-{subject_id}_ses-1_task-prf_apertures.nii.gz')
 paradigm = image.load_img(paradigm).get_fdata()
 
-# Get rid of the third axis and put the last axis (time) first without changing order of 0,1
-# paradigm = np.moveaxis(paradigm, 2, 0).squeeze()
-# paradigm = np.moveaxis(paradigm.squeeze(), -1, 0)
+# Go from (T, 1, Y, X) to (X, Y, T)
 paradigm = np.transpose(paradigm.squeeze(), (2,1,0))
 
 print(paradigm.shape)
@@ -95,7 +93,10 @@ dy = height_degrees / height_pixels
 # Generate degree arrays for x and y axes
 x_degrees = np.linspace(-width_degrees / 2 + dx / 2, width_degrees / 2 - dx / 2, width_pixels)
 y_degrees = np.linspace(-height_degrees / 2 + dy / 2, height_degrees / 2 - dy / 2, height_pixels)
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 y_mesh, x_mesh = np.meshgrid(y_degrees, x_degrees)
 
 # Flatten the meshgrid and create a DataFrame

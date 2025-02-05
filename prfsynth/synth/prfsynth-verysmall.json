@@ -2,7 +2,7 @@
     {
     "subjectName":"verysmall",
     "sessionName":"1",
-    "repeats":2,
+    "repeats":5,
     "useparallel":true,
     "TR":1,
     "Type":"linear",
@@ -32,12 +32,12 @@
     "Centerx0":0,
     "Centery0":0,
     "Theta":0,
-    "sigmaMajor":0,
-    "sigmaMinor":"same",
+    "sigmaMajor":5,
+    "sigmaMinor":5,
     "dog_sigmaMajor":2,
     "dog_sigmaMinor":2,
     "dog_Theta":0,
-    "dog_Scale":0.5,
+    "dog_Scale":0.0,
     "Type":"mrvista"
     }
     ],
@@ -71,7 +71,6 @@
     "lowfrequ_amplitude":0.01,
     "lowfrequ_frequ":120
     }
-]
+    ]
     }
-]
-    
+    ]

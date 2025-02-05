@@ -16,6 +16,6 @@
         "coarseDecimate": 2
     },
     "stimulus": {
-    	"fieldofviewHorz":20
+        "stimulus_diameter":20
     }
 }
