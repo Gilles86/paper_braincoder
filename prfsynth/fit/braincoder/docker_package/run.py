@@ -111,10 +111,6 @@ dy = height_degrees / height_pixels
 # Generate degree arrays for x and y axes
 x_degrees = np.linspace(-width_degrees / 2 + dx / 2, width_degrees / 2 - dx / 2, width_pixels)
 y_degrees = np.linspace(-height_degrees / 2 + dy / 2, height_degrees / 2 - dy / 2, height_pixels)
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
 y_mesh, x_mesh = np.meshgrid(y_degrees, x_degrees)
 
 # Flatten the meshgrid and create a DataFrame
