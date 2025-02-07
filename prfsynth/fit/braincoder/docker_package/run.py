@@ -37,6 +37,8 @@ parser.add_argument('--skip_bids_validator', help='Whether or not to perform BID
 parser.add_argument('-v', '--version', action='version',
                     version='BIDS-App example version {}'.format(__version__))
 
+parser.add_argument('-d', '--debug', action='store_true', help='Use only 100th of the data for testing')
+
 args = parser.parse_args()
 print(args)
 
