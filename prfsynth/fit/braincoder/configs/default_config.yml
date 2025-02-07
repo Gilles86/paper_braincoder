@@ -17,7 +17,7 @@ fitting:
       lower: 2.
       upper: 10
       n_steps: 20
-  n_gd_iterations: 1000
+  n_gd_iterations: 100
   fit_hrf: false
 synth:
   origin: 'prfsynth' # prfpy

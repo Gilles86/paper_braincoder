@@ -1,9 +1,9 @@
 {
-    "subjectName"    : "verysmall",
+    "subjectName"    : "vanes2019plit",
     "sessionName"    : "1",
     "solver"         : "vista",
     "tasks"          : "[all]",
-    "isPRFSynthData" : true,
+    "isPRFSynthData" : false,
     "options": {
     	"prfprepareAnalysis" : "01",
         "hrf": [],
@@ -16,6 +16,5 @@
         "coarseDecimate": 2
     },
     "stimulus": {
-        "stimulus_diameter":20
-    }
+        "stimulus_diameter":20    }
 }

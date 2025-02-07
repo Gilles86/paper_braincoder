@@ -8,7 +8,7 @@ fi
 # Create logs directory if it doesn't exist
 mkdir -p logs
 
-basdir=/data/ds-prfsynth
+basedir=/data/ds-prfsynth
 CONFIG_FILE=$PWD/configs/prfanalyze-popeye-${IDENTIFIER}.json
 
 echo "Running with identifier: $IDENTIFIER"

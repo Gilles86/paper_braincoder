@@ -1,9 +1,9 @@
 {
-    "subjectName"    : "verysmall",
+    "subjectName"    : "largegrid",
     "sessionName"    : "1",
     "solver"         : "vista",
-    "tasks"          : "[all]",
-    "isPRFSynthData" : true,
+    "tasks"          : "prf",
+    "isPRFSynthData" : false,
     "options": {
     	"prfprepareAnalysis" : "01",
         "hrf": [],
@@ -16,6 +16,5 @@
         "coarseDecimate": 2
     },
     "stimulus": {
-        "stimulus_diameter":20
-    }
+        "stimulus_diameter":20    }
 }

@@ -1,8 +1,8 @@
 [
     {
-    "subjectName":"smallgrid",
+    "subjectName":"largegrid",
     "sessionName":"1",
-    "repeats":2,
+    "repeats":200,
     "useparallel":true,
     "TR":1,
     "Type":"linear",
