@@ -1,0 +1,10 @@
+{
+    "subjectName": "vanes2019",
+    "sessionName": "1",
+    "solver":      "afni",
+    "options": {
+                 "hrf":"SPM",
+                 "model":"simpleafni"
+
+    }
+}
