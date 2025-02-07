@@ -33,9 +33,9 @@ parser.add_argument('--data_origin', help='The name of the corresponding synthes
                     'Can either be prfsynth (default) or prfpy.', nargs=1, default='prfsynth')
 parser.add_argument('--skip_bids_validator', help='Whether or not to perform BIDS dataset validation',
                     action='store_true')
-# parser.add_argument('--debug', help='Whether to start the app in debug mode. Interactive terminal will be started.', action="store_true")
 parser.add_argument('-v', '--version', action='version',
                     version='BIDS-App example version {}'.format(__version__))
+parser.add_argument('-d', '--debug', action='store_true', help='Use only 100th of the data for testing')
 
 args = parser.parse_args()
 print(args)
@@ -64,10 +64,26 @@ data = op.join(args.bids_dir, f'sub-{subject_id}', 'ses-1', 'func', f'sub-{subje
 im = image.load_img(data)
 print(im.shape)
 
-mask = image.new_img_like(im, np.ones(im.shape[:-1]))
+if args.debug:
+    # Create a mask with all zeros
+    mask_data = np.zeros(im.shape[:-1])
+
+    # Randomly select 1/100th of the voxels
+    num_voxels = np.prod(mask_data.shape)
+    num_selected = num_voxels // 100  # 1/1000th of voxels
+
+    # Flatten, randomly select indices, and set to 1
+    indices = np.random.choice(num_voxels, num_selected, replace=False)
+    mask_data.flat[indices] = 1
+
+    print(f'***DEBUG ACTIVATED, only using {num_selected} voxels')
+else:
+    mask_data = np.ones(im.shape[:-1])
+
+# Create a new image with the mask
+mask = image.new_img_like(im, mask_data)
 
 masker = maskers.NiftiMasker(mask_img=mask)
-
 
 data = pd.DataFrame(masker.fit_transform(im))
 data.columns.name = 'voxel'
@@ -133,25 +149,61 @@ print(f'sd: {sd}')
 
 
 if opts['fitting']['fit_hrf']:
-    pars_gauss_grid = par_fitter.fit_grid(x, y, sd, baseline, amplitude, hrf_delay, hrf_dispersion, use_correlation_cost=True)
+    if opts['fitting'].get('divisive_normalisation', False):
+        raise NotImplementedError('Cannot fit HRF and DN right now.')
+
+    pars_gauss_grid = par_fitter.fit_grid(x, y, sd, baseline, amplitude, hrf_delay, hrf_dispersion, use_correlation_cost=True, positive_amplitude=opts['fitting']['force_positive_amplitude'])
 else:
     pars_gauss_grid = par_fitter.fit_grid(x, y, sd, baseline, amplitude, use_correlation_cost=True)
 
 print(pars_gauss_grid)
 
 # # And refine the baseline and amplitude parameters using OLS
-pars_gauss_ols = par_fitter.refine_baseline_and_amplitude(pars_gauss_grid, l2_alpha=1.0, n_iterations=1)
+pars_gauss_ols = par_fitter.refine_baseline_and_amplitude(pars_gauss_grid, l2_alpha=opts['fitting']['l2_norm'], positive_amplitude=opts['fitting']['force_positive_amplitude'])
 
 print(pars_gauss_ols)
 
 
 
-pars_gauss_gd = par_fitter.fit(init_pars=pars_gauss_ols, max_n_iterations=opts['fitting']['n_gd_iterations'])
+if opts.get('fitting', {}).get('grid_only', False):
+    final_pars = pars_gauss_ols
 
-print(pars_gauss_gd)
-r2_gauss_gd = par_fitter.get_rsq(pars_gauss_gd)
-pred = model_gauss.predict(parameters=pars_gauss_gd)
+    if opts['fitting'].get('divisive_normalisation', False):
+        raise NotImplementedError('Cannot fit DN with only grid!')
+else:
 
+    if opts['fitting'].get('divisive_normalisation', False):
+
+        pars = {'x':'centerx0', 'y':'centery0', 'sd':'sigmamajor', 'rf_amplitude':'beta', 'bold_baseline':'bold_baseline',
+                'srf_amplitude':'srf_amplitude', 'srf_size':'srf_size', 'neural_baseline':'neural_baseline', 'surround_baseline':'surround_baseline'}
+
+        pars_dn_init = pars_gauss_ols.copy()
+
+        pars_dn_init.rename(columns={'baseline':'bold_baseline', 'amplitude':'rf_amplitude'})
+        pars_dn_init['srf_amplitude'] = 0.01
+        pars_dn_init['srf_size'] = 2.5
+        pars_dn_init['neural_baseline'] = 1.0
+        pars_dn_init['surround_baseline'] = 1.0
+
+        from braincoder.models import DivisiveNormalizationGaussianPRF2DWithHRF
+        model_dn = DivisiveNormalizationGaussianPRF2DWithHRF(data=data,
+                                                    paradigm=paradigm,
+                                                    hrf_model=hrf_model,
+                                                    grid_coordinates=grid_coordinates,
+                                                    flexible_hrf_parameters=False)
+
+
+        par_fitter_dn = ParameterFitter(model=model_dn, data=data, paradigm=paradigm)
+        # Without HRF
+        pars_dn = par_fitter_dn.fit(init_pars=pars_dn_init, max_n_iterations=opts['fitting']['n_gd_iterations'])
+        final_pars = pars_dn.copy()
+
+    else:
+        pars_gauss_gd = par_fitter.fit(init_pars=pars_gauss_ols, max_n_iterations=opts.get('fitting', {}).get('n_gd_iterations', 100))
+        final_pars = pars_gauss_gd
+
+r2_gauss_gd = par_fitter.get_rsq(final_pars)
+pred = model_gauss.predict(parameters=final_pars)
 
 def save_as_nifti(data, masker, output_dir, filename):
     """Save array-like data to a NIfTI image."""
@@ -176,6 +228,6 @@ if (args.output_dir):
 else:
     output_dir = os.path.join(args.bids_dir, f"derivatives/prfanalyze-braincoder/sub-{subject_id}/ses-{session}/")
 
-save_final_results(pars_gauss_gd, masker, output_dir=output_dir)
+save_final_results(final_pars, masker, output_dir=output_dir)
 save_as_nifti(pred, masker=masker, output_dir=output_dir, filename=f'sub-{subject_id}_ses-{session}_task-prf_modelpred.nii.gz')
 save_as_nifti(r2_gauss_gd, masker, output_dir=output_dir, filename=f'sub-{subject_id}_ses-{session}_task-prf_r2.nii.gz')
