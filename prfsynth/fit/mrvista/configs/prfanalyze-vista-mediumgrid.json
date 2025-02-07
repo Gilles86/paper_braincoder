@@ -1,0 +1,20 @@
+{
+    "subjectName"    : "mediumgrid",
+    "sessionName"    : "1",
+    "solver"         : "vista",
+    "tasks"          : "prf",
+    "isPRFSynthData" : false,
+    "options": {
+    	"prfprepareAnalysis" : "01",
+        "hrf": [],
+        "model"              : "one gaussian",
+        "grid"               :  false,
+        "wsearch"            : "coarse to fine",
+        "detrend"            : 1,
+        "keepAllPoints"      : false,
+        "numberStimulusGridPoints": 50,
+        "coarseDecimate": 2
+    },
+    "stimulus": {
+        "stimulus_diameter":20    }
+}
