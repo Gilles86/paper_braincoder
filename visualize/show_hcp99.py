@@ -32,32 +32,36 @@ ds = {}
 key_pairs = {'r2':'r2', 'x':'centerx0', 'y':'centery0', 'sd':'sigmamajor', 'amplitude':'beta', 'baseline':'baseline',
              'theta':None, 'ecc':None}
 
-vmin_vmax = {'r2':(0.0, 1.0), 'x':(-10.0, 10.0), 'y':(-5.5, 5.5), 'sd':(1.0, 15.0),
-              'amplitude':(None, None), 'baseline':(None, None),
+vmin_vmax = {'r2':(0.0, 1.0), 'x':(-10.0, 10.0), 'y':(-5.5, 5.5), 'sd':(1.0, 25.0),
+              'amplitude':(None, None), 'baseline':(-5, 5),
               'theta':(0.0, np.pi), 'ecc':(0.0, np.sqrt(5.5**2+10**2)), 'hrf_delay':(None, None), 'hrf_dispersion':(None, None)}
 
-cmaps = {'r2':'hot', 'x':'RdBu_r', 'y':'RdBu_r', 'sd':'viridis', 'amplitude':'coolwarm', 'baseline':'viridis',
+cmaps = {'r2':'hot', 'x':'RdBu_r', 'y':'RdBu_r', 'sd':'viridis', 'amplitude':'coolwarm', 'bold_baseline':'coolwarm',
+         'baseline':'coolwarm',
              'theta':'twilight', 'ecc':'viridis', 'hrf_delay':'viridis', 'hrf_dispersion':'viridis'}
 
-model = 'prfanalyze-braincoder.hrf.A100'
+# model = 'prfanalyze-braincoder.hrf.A100'
 model = 'prfanalyze-braincoder.A100'
-model = 'prfanalyze-braincoder.dn.A100'
+# model = 'prfanalyze-braincoder.dn.A100'
 
 if model == 'prfanalyze-braincoder.hrf.A100':
     key_pairs['hrf_delay'] = 'hrf_delay'
     key_pairs['hrf_dispersion'] = 'hrf_dispersion'
 
 if model == 'prfanalyze-braincoder.dn.A100':
-    key_pars_ = {'neural_baseline':'neural_baseline', 'surround_baseline':'surround_baseline', 'srf_size':'srf_size', 'srf_amplitude':'srf_amplitude'}
-    key_pars_ = {'neural_baseline':'neural_baseline', 'surround_baseline':'surround_baseline', 'srf_size':'srf_size', 'srf_amplitude':'srf_amplitude'}
-    vmin_vmax_ = {'neural_baseline':(None, None), 'surround_baseline':(None, None), 'srf_size':(0.0, 10.0), 'srf_amplitude':(None, None)}
-    cmaps_ = {'neural_baseline':'viridis', 'surround_baseline':'viridis', 'srf_size':'viridis', 'srf_amplitude':'coolwarm'}
+    key_pars_ = {'neural_baseline':'neural_baseline', 'surround_baseline':'surround_baseline', 'srf_size':'srf_size', 'srf_amplitude':'srf_amplitude',
+                 'amplitude':'beta', 'bold_baseline':'bold_baseline'}
+    vmin_vmax_ = {'neural_baseline':(None, None), 'surround_baseline':(None, None), 'srf_size':(0.0, 10.0), 'srf_amplitude':(0.0, 1.0),
+                  'bold_baseline':(-10, 10)}
+    cmaps_ = {'neural_baseline':'viridis', 'surround_baseline':'viridis', 'srf_size':'viridis', 'srf_amplitude':'viridis'}
 
     key_pairs.update(key_pars_)
+    key_pairs.pop('baseline')
+    key_pairs.pop('amplitude')
     vmin_vmax.update(vmin_vmax_)
     cmaps.update(cmaps_)
 
-    r2_thr = 0.1
+    r2_thr = 0.4
 
 
 r2 = image.load_img(f'/data/ds-prfsynth/BIDS/derivatives/{model}/sub-vanes2019/ses-1/sub-vanes2019_ses-1_task-prf_r2.nii.gz').get_fdata().ravel()
