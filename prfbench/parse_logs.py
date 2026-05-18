@@ -69,6 +69,11 @@ def parse(runtime_dir: Path) -> pd.DataFrame:
         df['backend'] = 'tensorflow'
     df['backend'] = df['backend'].fillna('tensorflow')
 
+    # The original `cpu` hardware label was always 32-core (-c 32 in the
+    # old submit script). Rename so it merges with the new cpu32 sweep
+    # rows on the same line in fig_speed.
+    df.loc[df['hardware'] == 'cpu', 'hardware'] = 'cpu32'
+
     # Join dataset metadata.
     meta = pd.DataFrame.from_dict(DATASET_META, orient='index').reset_index().rename(
         columns={'index': 'dataset'}

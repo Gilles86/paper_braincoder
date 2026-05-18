@@ -1,14 +1,18 @@
-"""Speed comparison figure: runtime + speedup vs problem size.
+"""Speed comparison figure: runtime vs problem size.
 
-Two panels, double-column width.
+Single panel, ~5.5" wide. One line per (package, hardware, variant) cell.
+Color encodes package-or-hardware (braincoder lines pick up the hardware
+palette; competing packages use their package color). Linestyle + marker
+shape encode variant.
 
-- A: wall_seconds vs (voxels × timepoints), log-log. One line per
-     (package, hardware, variant) cell. Color encodes package-or-hardware
-     (braincoder lines pick up the hardware palette; competing packages
-     use their package color). Linestyle encodes variant.
-- B: speedup-over-CPU for the same problem size. Empty until GPU rows
-     land. Shares the x-axis with panel A so the absent-data range still
-     reads as "no data here yet" rather than as a different scale.
+The y-axis uses log scale but with human-meaningful tick labels:
+1 s · 10 s · 1 min · 10 min · 1 h · 8 h · 1 d. A reader skimming the
+figure can read off "this fit takes about an hour" without doing math.
+
+A speedup-over-CPU panel was prototyped but pulled — once we have proper
+GPU rows, the comparison reads directly off the single panel ("look how
+much the colored GPU lines drop below the CPU lines") and a ratio panel
+adds confusion rather than clarity.
 
 Inputs:  notes/data/runtime.tsv  (produced by `python -m prfbench.parse_logs`)
 Outputs: notes/figures/fig_speed.{pdf,svg}
@@ -19,11 +23,17 @@ import argparse
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 import numpy as np
 import pandas as pd
 import seaborn as sns
 
 from .style import PALETTE_HARDWARE, PALETTE_PACKAGE, set_style
+
+
+# Human-meaningful y-tick locations (in seconds) and their labels.
+TIME_TICKS = [1, 10, 60, 600, 3_600, 28_800, 86_400]
+TIME_TICK_LABELS = ['1 s', '10 s', '1 min', '10 min', '1 h', '8 h', '1 d']
 
 
 DATASET_ORDER = ['smallgrid', 'mediumgrid', 'largegrid', 'vanes2019']
@@ -136,12 +146,29 @@ def _plot_panel_runtime(ax: plt.Axes, agg: pd.DataFrame) -> None:
 
     ax.set_xscale('log')
     ax.set_yscale('log')
+
+    # Snap ylim to the nearest TIME_TICKS around the data range BEFORE
+    # the FixedLocator runs, so all our labels are visible.
+    all_means = [v for v in agg['mean'].dropna().tolist() if v > 0]
+    if all_means:
+        y_lo, y_hi = min(all_means), max(all_means)
+        ticks_lo = max([t for t in TIME_TICKS if t <= y_lo], default=TIME_TICKS[0])
+        ticks_hi = min([t for t in TIME_TICKS if t >= y_hi], default=TIME_TICKS[-1])
+        ax.set_ylim(ticks_lo * 0.5, ticks_hi * 2)
+
+    # Human-meaningful y-ticks (1 s / 10 s / 1 min / 10 min / 1 h / 8 h / 1 d).
+    ax.yaxis.set_major_locator(mticker.FixedLocator(TIME_TICKS))
+    ax.yaxis.set_major_formatter(mticker.FixedFormatter(TIME_TICK_LABELS))
+    ax.yaxis.set_minor_locator(mticker.NullLocator())
+
     ax.set_xlabel('Voxels × Timepoints (log)')
-    ax.set_ylabel('Wall time (s, log)')
-    ax.set_title('A. Runtime', loc='left', fontsize=10, fontweight='bold')
+    ax.set_ylabel('Wall time')
 
 
-def _plot_panel_speedup(ax: plt.Axes, agg: pd.DataFrame) -> None:
+def _plot_panel_speedup(ax: plt.Axes, agg: pd.DataFrame) -> None:    # noqa: ARG001
+    # Reserved for when GPU data lands; the function body is kept but
+    # the speedup panel is no longer rendered in main() (see module
+    # docstring for the rationale).
     """Panel B — speedup over CPU at the same (package, variant, dataset)."""
     # Reference: each (package, variant, dataset)'s own CPU run.
     cpu = agg[agg['hardware'] == 'cpu'][
@@ -212,15 +239,12 @@ def main() -> None:
     if agg.empty:
         raise SystemExit(f'No runtimes in {args.tsv}. Run cluster jobs first.')
 
-    fig, (ax_a, ax_b) = plt.subplots(
-        1, 2, figsize=(7.5, 3.5), constrained_layout=True, sharex=True,
-    )
-    _plot_panel_runtime(ax_a, agg)
-    _plot_panel_speedup(ax_b, agg)
-
-    # Match Panel A's x range on Panel B even if B has no data yet.
-    ax_b.set_xlim(ax_a.get_xlim())
-    sns.despine(fig=fig, offset=5, trim=True)
+    fig, ax = plt.subplots(figsize=(5.5, 3.6), constrained_layout=True)
+    _plot_panel_runtime(ax, agg)
+    # `trim=True` clips the spine to the visible tick range, which with
+    # our FixedLocator hides labels above the data extent. Keep the
+    # offset but not the trim.
+    sns.despine(fig=fig, offset=5, trim=False)
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(args.out)

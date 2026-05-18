@@ -71,13 +71,18 @@ def set_style() -> None:
 # (V100 → A100 → H100 → H200). CPU gets its own neutral-but-saturated
 # slate so it doesn't fade into chart background.
 PALETTE_HARDWARE = {
-    'cpu':  '#2E3A59',   # deep slate — the baseline
-    'gpu':  '#4FA1A8',   # teal — generic GPU
-    'l4':   '#5D8C3F',   # green — entry-level
-    'v100': '#B79257',   # tan — older
-    'a100': '#3B5BA5',   # blue — workhorse
-    'h100': '#8172B2',   # purple — top of last generation
-    'h200': '#C44E52',   # red — current top
+    # CPU thread tiers: cool gradient, more cores = darker.
+    'cpu8':  '#7A9CC6',
+    'cpu16': '#4674AF',
+    'cpu32': '#1F4F8A',
+    'cpu':   '#1F4F8A',   # legacy alias for cpu32; kept for any old caller
+    # GPUs: distinct hues, ordered by generation L4 → V100 → A100 → H100 → H200.
+    'gpu':   '#4FA1A8',   # teal — generic GPU (unspecified type)
+    'l4':    '#5D8C3F',   # green — entry-level
+    'v100':  '#B79257',   # tan — older
+    'a100':  '#3B5BA5',   # blue — workhorse
+    'h100':  '#8172B2',   # purple — top of last generation
+    'h200':  '#C44E52',   # red — current top
 }
 
 PALETTE_BACKEND = {
