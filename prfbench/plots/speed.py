@@ -67,13 +67,24 @@ def _line_color(package: str, hardware: str) -> str:
     return PALETTE_PACKAGE.get(package, '0.4')
 
 
-def _aggregate(df: pd.DataFrame) -> pd.DataFrame:
+def _aggregate(df: pd.DataFrame, hardware_subset: list[str] | None = None) -> pd.DataFrame:
     """Mean + SEM over seeds; one row per
     (package, hardware, backend, variant, dataset). Drops convergence-sweep
-    cells (n_iter != 'default')."""
+    cells (n_iter != 'default').
+
+    If `hardware_subset` is given, restrict braincoder rows to those
+    hardware tiers (non-braincoder packages always pass through). Default
+    is cpu32 + every GPU type — drops the cpu8/cpu16 thread-scaling axis
+    from this figure (it lives in fig_cpu_threads.py).
+    """
     df = df.copy()
     # Drop convergence sweep — those belong to fig_convergence.
     df = df[df['n_iter'].isin([pd.NA, 'default']) | df['n_iter'].isna()]
+
+    if hardware_subset is not None:
+        keep = (df['package'] != 'braincoder') | df['hardware'].isin(hardware_subset)
+        df = df[keep]
+
     df['problem_size'] = df['n_voxels'] * df['n_timepoints']
 
     grouped = df.groupby(
@@ -97,18 +108,23 @@ def _aggregate(df: pd.DataFrame) -> pd.DataFrame:
 def _line_label(package: str, hardware: str, variant: str) -> str:
     """Short label for endpoint annotation."""
     if package == 'braincoder':
-        return f'braincoder/{hardware}/{variant}'
+        # Hardware tier + variant only — the "braincoder/" prefix is
+        # implicit given the color (red = AFNI, etc).
+        return f'{hardware}, {variant}'
     # Non-braincoder fitters are CPU-only and have one variant.
     return package
 
 
 def _plot_panel_runtime(ax: plt.Axes, agg: pd.DataFrame) -> None:
-    """Panel A — runtime vs problem size, log-log."""
-    label_positions = []   # (y, label) — used to nudge stacked labels apart
+    """Runtime per dataset, categorical x-axis, log-y wall time."""
+    # X is now categorical: 0, 1, 2, 3 = smallgrid → vanes2019.
+    x_index = {ds: i for i, ds in enumerate(DATASET_ORDER)}
+
+    label_positions = []   # (y, label, color, x) — staggered to avoid overlap
     for (pkg, hw, variant), grp in agg.groupby(
         ['package', 'hardware', 'variant'], dropna=False
     ):
-        grp = grp.sort_values('problem_size')
+        grp = grp.sort_values('dataset')
         if grp.empty:
             continue
 
@@ -116,36 +132,41 @@ def _plot_panel_runtime(ax: plt.Axes, agg: pd.DataFrame) -> None:
         ls = LINESTYLE_VARIANT.get(variant, '-')
         marker = MARKER_VARIANT.get(variant, 'o')
 
+        xs = [x_index[ds] for ds in grp['dataset']]
         ax.plot(
-            grp['problem_size'], grp['mean'],
+            xs, grp['mean'],
             color=color, linestyle=ls,
-            marker=marker, markersize=4.0, markeredgecolor='white',
-            markeredgewidth=0.5, zorder=2,
+            marker=marker, markersize=5.0, markeredgecolor='white',
+            markeredgewidth=0.6, zorder=2,
         )
         if grp['sem'].notna().any():
             ax.fill_between(
-                grp['problem_size'],
+                xs,
                 grp['mean'] - grp['sem'], grp['mean'] + grp['sem'],
                 color=color, alpha=0.18, lw=0, zorder=1,
             )
 
-        right = grp.iloc[-1]
+        right_x = xs[-1]
+        right_y = float(grp.iloc[-1]['mean'])
         label = _line_label(pkg, hw, variant)
-        label_positions.append((float(right['mean']), label, color, float(right['problem_size'])))
+        label_positions.append((right_y, label, color, right_x))
 
-    # Stagger labels vertically when they collide.
+    # Stagger labels vertically when they would collide.
     label_positions.sort(key=lambda t: t[0])
     last_y_log = -np.inf
-    min_log_gap = 0.07
+    min_log_gap = 0.08
     for y, label, color, x in label_positions:
         y_log = np.log10(y)
         if y_log - last_y_log < min_log_gap:
             y = 10 ** (last_y_log + min_log_gap)
         last_y_log = np.log10(y)
-        ax.text(x * 1.15, y, label, color=color, fontsize=7, ha='left', va='center')
+        ax.text(x + 0.08, y, label, color=color, fontsize=7.5,
+                ha='left', va='center')
 
-    ax.set_xscale('log')
     ax.set_yscale('log')
+    ax.set_xticks(list(x_index.values()))
+    ax.set_xticklabels(DATASET_ORDER, rotation=20, ha='right')
+    ax.set_xlim(-0.3, len(DATASET_ORDER) - 1 + 1.3)  # extra room on the right for labels
 
     # Snap ylim to the nearest TIME_TICKS around the data range BEFORE
     # the FixedLocator runs, so all our labels are visible.
@@ -161,7 +182,8 @@ def _plot_panel_runtime(ax: plt.Axes, agg: pd.DataFrame) -> None:
     ax.yaxis.set_major_formatter(mticker.FixedFormatter(TIME_TICK_LABELS))
     ax.yaxis.set_minor_locator(mticker.NullLocator())
 
-    ax.set_xlabel('Voxels × Timepoints (log)')
+    # Tick labels self-explanatory; no x-axis title.
+    ax.set_xlabel('')
     ax.set_ylabel('Wall time')
 
 
@@ -231,11 +253,20 @@ def main() -> None:
         type=Path,
         default=repo / 'notes' / 'figures' / 'fig_speed.pdf',
     )
+    p.add_argument(
+        '--all-hardware', action='store_true',
+        help='Include cpu8/cpu16 thread-scaling rows. Default omits them.',
+    )
     args = p.parse_args()
 
     set_style()
     df = pd.read_csv(args.tsv, sep='\t')
-    agg = _aggregate(df)
+    # Default hardware subset: drop cpu8/cpu16 (the thread-scaling axis
+    # has its own plot). Pass `--all-hardware` to disable.
+    hw_subset = None if args.all_hardware else [
+        'cpu32', 'gpu', 'a100', 'h100', 'h200', 'l4', 'v100',
+    ]
+    agg = _aggregate(df, hardware_subset=hw_subset)
     if agg.empty:
         raise SystemExit(f'No runtimes in {args.tsv}. Run cluster jobs first.')
 
