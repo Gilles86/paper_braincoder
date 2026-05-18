@@ -65,14 +65,19 @@ def set_style() -> None:
 
 # Hand-picked categorical palettes (don't use seaborn defaults).
 # Reach for these by name; documented at point of use in each figure script.
+#
+# Hardware tiers are ordered cool → warm so the eye reads colder colors
+# as cheaper/slower-but-cheaper and warmer colors as faster-but-pricier
+# (V100 → A100 → H100 → H200). CPU gets its own neutral-but-saturated
+# slate so it doesn't fade into chart background.
 PALETTE_HARDWARE = {
-    'cpu':  '#7F7F7F',   # neutral gray — the baseline
-    'gpu':  '#3B5BA5',   # blue — generic GPU
-    'a100': '#C44E52',   # red — A100
-    'h100': '#8172B2',   # purple — H100
-    'h200': '#5D8C3F',   # green — H200
-    'l4':   '#B79257',   # tan — L4 (entry-level)
-    'v100': '#4FA1A8',   # teal — V100 (older)
+    'cpu':  '#2E3A59',   # deep slate — the baseline
+    'gpu':  '#4FA1A8',   # teal — generic GPU
+    'l4':   '#5D8C3F',   # green — entry-level
+    'v100': '#B79257',   # tan — older
+    'a100': '#3B5BA5',   # blue — workhorse
+    'h100': '#8172B2',   # purple — top of last generation
+    'h200': '#C44E52',   # red — current top
 }
 
 PALETTE_BACKEND = {

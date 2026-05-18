@@ -28,13 +28,22 @@ from .style import PALETTE_HARDWARE, PALETTE_PACKAGE, set_style
 
 DATASET_ORDER = ['smallgrid', 'mediumgrid', 'largegrid', 'vanes2019']
 
-# Linestyle encodes variant — readable in grayscale.
+# Linestyle + marker shape encode variant — both for redundancy with color
+# (readable in grayscale) AND because two CPU variants picking up the same
+# color need an extra visual axis to tell apart.
 LINESTYLE_VARIANT = {
     'grid':    (0, (3, 2)),       # dashed
     'full':    '-',               # solid
     'hrf':     (0, (1, 1.5)),     # dotted
     'dn':      (0, (4, 1, 1, 1)), # dash-dot
     'default': '-',               # other packages have no variant axis
+}
+MARKER_VARIANT = {
+    'grid':    'o',
+    'full':    's',
+    'hrf':     '^',
+    'dn':      'D',
+    'default': 'o',
 }
 
 
@@ -95,11 +104,12 @@ def _plot_panel_runtime(ax: plt.Axes, agg: pd.DataFrame) -> None:
 
         color = _line_color(pkg, hw)
         ls = LINESTYLE_VARIANT.get(variant, '-')
+        marker = MARKER_VARIANT.get(variant, 'o')
 
         ax.plot(
             grp['problem_size'], grp['mean'],
             color=color, linestyle=ls,
-            marker='o', markersize=3.5, markeredgecolor='white',
+            marker=marker, markersize=4.0, markeredgecolor='white',
             markeredgewidth=0.5, zorder=2,
         )
         if grp['sem'].notna().any():
@@ -153,10 +163,11 @@ def _plot_panel_speedup(ax: plt.Axes, agg: pd.DataFrame) -> None:
 
         color = _line_color(pkg, hw)
         ls = LINESTYLE_VARIANT.get(variant, '-')
+        marker = MARKER_VARIANT.get(variant, 'o')
         ax.plot(
             grp['problem_size'], grp['speedup'],
             color=color, linestyle=ls,
-            marker='o', markersize=3.5, markeredgecolor='white',
+            marker=marker, markersize=4.0, markeredgecolor='white',
             markeredgewidth=0.5,
         )
         right = grp.iloc[-1]
