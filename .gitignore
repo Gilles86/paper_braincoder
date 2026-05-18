@@ -1,2 +1,21 @@
-**/logs/*
+# Build / cache
+build/
+dist/
+*.egg-info/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Mac noise
 .DS_Store
+
+# SLURM logs (regenerated per run)
+**/logs/*
+
+# Large derived outputs (regenerable; lives on /shares/ or /data/)
+notes/figures/_scratch/
+
+# Local jupyter / editor cruft
+.jupyter/
+.vscode/
+*.swp

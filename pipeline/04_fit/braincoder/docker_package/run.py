@@ -1,6 +1,7 @@
 import os
 import os.path as op
 import argparse
+import time
 import braincoder
 import json
 from nilearn import image
@@ -8,6 +9,7 @@ from nilearn import maskers
 import pandas as pd
 import numpy as np
 import yaml
+import tensorflow as tf
 
 __version__ = open(op.join(op.dirname(op.realpath(__file__)),
                                 'version')).read()
@@ -36,11 +38,19 @@ parser.add_argument('--skip_bids_validator', help='Whether or not to perform BID
 parser.add_argument('-v', '--version', action='version',
                     version='BIDS-App example version {}'.format(__version__))
 parser.add_argument('-d', '--debug', action='store_true', help='Use only 100th of the data for testing')
-
-parser.add_argument('-d', '--debug', action='store_true', help='Use only 100th of the data for testing')
+parser.add_argument('--n_iterations', type=int, default=None,
+                    help='Override fitting.n_gd_iterations from the config. '
+                    'Used for the convergence sweep.')
+parser.add_argument('--seed', type=int, default=42,
+                    help='Random seed for TF/NumPy. Used for benchmark repeats.')
 
 args = parser.parse_args()
 print(args)
+print(f'braincoder version: {braincoder.__version__ if hasattr(braincoder, "__version__") else "unknown"}')
+print(f'tensorflow version: {tf.__version__}')
+
+np.random.seed(args.seed)
+tf.random.set_seed(args.seed)
 
 with open(args.config_file, 'r') as f:
     opts = yaml.safe_load(f)
@@ -147,6 +157,11 @@ print(f'y: {y}')
 print(f'sd: {sd}')
 
 
+n_gd_iterations = args.n_iterations if args.n_iterations is not None else opts.get('fitting', {}).get('n_gd_iterations', 100)
+print(f'n_gd_iterations: {n_gd_iterations}  (source: {"--n_iterations CLI" if args.n_iterations is not None else "config"})')
+
+fit_t0 = time.time()
+
 if opts['fitting']['fit_hrf']:
     if opts['fitting'].get('divisive_normalisation', False):
         raise NotImplementedError('Cannot fit HRF and DN right now.')
@@ -194,20 +209,26 @@ else:
 
         par_fitter_dn = ParameterFitter(model=model_dn, data=data, paradigm=paradigm)
         # Without HRF
-        pars_dn = par_fitter_dn.fit(init_pars=pars_dn_init, max_n_iterations=opts['fitting']['n_gd_iterations'])
+        pars_dn = par_fitter_dn.fit(init_pars=pars_dn_init, max_n_iterations=n_gd_iterations)
         final_pars = pars_dn.copy()
 
     else:
-        pars_gauss_gd = par_fitter.fit(init_pars=pars_gauss_ols, max_n_iterations=opts.get('fitting', {}).get('n_gd_iterations', 100))
+        pars_gauss_gd = par_fitter.fit(init_pars=pars_gauss_ols, max_n_iterations=n_gd_iterations)
         final_pars = pars_gauss_gd
 
 r2_gauss_gd = par_fitter.get_rsq(final_pars)
 pred = model_gauss.predict(parameters=final_pars)
 
+fit_seconds = time.time() - fit_t0
+print(f'INTERNAL_FIT_TIME: {fit_seconds:.2f} seconds')
+
 def save_as_nifti(data, masker, output_dir, filename):
-    """Save array-like data to a NIfTI image."""
+    """Save array-like data to a NIfTI image. Forces float32 + slope=1/inter=0
+    so binary masks (uint8) do not quantize the saved parameter values."""
     os.makedirs(output_dir, exist_ok=True)
     img = masker.inverse_transform(data)
+    img.set_data_dtype(np.float32)
+    img.header.set_slope_inter(slope=1, inter=0)
     img.to_filename(op.join(output_dir, filename))
 
 

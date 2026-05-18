@@ -12,7 +12,7 @@ module load singularityce
 
 # Default base directory and script directory
 DEFAULT_BASEDIR="/shares/zne.uzh/gdehol/ds-prfsynth"
-SCRIPT_DIR=/home/gdehol/git/paper_braincoder/prfsynth/synth
+SCRIPT_DIR=/home/gdehol/git/paper_braincoder/pipeline/02_synth
 DEFAULT_CONFIG_FILE="$SCRIPT_DIR/prfsynth-config.json"
 
 # Allow basedir and config file to be overridden by arguments

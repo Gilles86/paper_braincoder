@@ -1,0 +1,52 @@
+# CUDA env for the braincoder benchmark — PYTORCH backend.
+#
+# Build:
+#   sbatch create_env/create_gpu_env.sh torch
+#
+# Activate + set the backend before running braincoder code:
+#   conda activate paper_braincoder_cuda_torch
+#   export KERAS_BACKEND=torch
+#
+# Stack: Python 3.12 + Keras 3.13+ + PyTorch 2.4+ (CUDA 12 wheels).
+# Pulled from PyTorch's official index so the CUDA libs match the
+# torch wheel exactly.
+#
+# `tensorflow-cpu` is included only because braincoder still has a few
+# `import tensorflow` paths for utilities; the heavy lifting goes
+# through Keras 3 → torch on GPU.
+
+name: paper_braincoder_cuda_torch
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.12
+  - pip
+
+  - numpy<2.3
+  - scipy
+  - pandas
+  - matplotlib
+  - seaborn
+  - tqdm
+  - pyyaml
+
+  - nibabel
+  - nilearn
+  - pybids
+
+  - jupyterlab
+  - ipykernel
+  - pytest
+
+  - pip:
+      # PyTorch 2.4+ with CUDA 12.x wheels (matches sciencecluster A100s).
+      - --extra-index-url https://download.pytorch.org/whl/cu124
+      - "torch>=2.4"
+      - "keras>=3.13,<4"
+      - "tensorflow-cpu>=2.18"
+      - "tf_keras>=2.18"
+      - "tensorflow-probability>=0.25"
+      - protobuf>=4.21
+
+      - "braincoder @ git+https://github.com/Gilles86/braincoder.git@main"

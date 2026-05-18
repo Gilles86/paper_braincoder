@@ -1,0 +1,52 @@
+# CPU conda environment — local Linux dev and cluster CPU jobs of the
+# braincoder benchmark. On Apple Silicon use environment_apple_silicon.yml.
+#
+# Build:
+#   conda env create -f create_env/environment_cpu.yml
+#   conda activate paper_braincoder_cpu
+#   pip install -e .
+#
+# On the cluster:
+#   sbatch create_env/create_cpu_env.sh
+#
+# Stack: Python 3.12 + Keras 3.13+ + TF 2.20 CPU. Mirror of
+# environment_cuda.yml so the same code runs both places.
+
+name: paper_braincoder_cpu
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.12
+  - pip
+
+  # Scientific Python core
+  - numpy<2.3
+  - scipy
+  - pandas
+  - matplotlib
+  - seaborn
+  - tqdm
+  - pyyaml
+
+  # Neuroimaging — we just read NIfTI / TSV outputs from the BIDS-app
+  # fitters, so a minimal subset suffices.
+  - nibabel
+  - nilearn
+  - pybids
+
+  - jupyterlab
+  - ipykernel
+  - pytest
+
+  - pip:
+      # Keras 3 / TF 2.20 CPU.
+      - "tensorflow-cpu==2.20.*"
+      - "keras>=3.13,<4"
+      - "tf_keras>=2.20"
+      - "tensorflow-probability>=0.25"
+      - protobuf>=4.21
+
+      # Braincoder itself — pinned at env-build time for reproducibility;
+      # override with `pip install -e libs/braincoder` for editable dev.
+      - "braincoder @ git+https://github.com/Gilles86/braincoder.git@main"
