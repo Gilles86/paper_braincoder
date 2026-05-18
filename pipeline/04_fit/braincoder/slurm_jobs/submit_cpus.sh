@@ -13,7 +13,7 @@
 
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
-SEEDS=("${@:-1 2 3}")
+SEEDS=("$@"); [ ${#SEEDS[@]} -eq 0 ] && SEEDS=(1 2 3)
 
 n=0
 for ds in largegrid vanes2019; do

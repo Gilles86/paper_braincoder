@@ -12,7 +12,7 @@
 
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
-SEEDS=("${@:-1 2 3}")
+SEEDS=("$@"); [ ${#SEEDS[@]} -eq 0 ] && SEEDS=(1 2 3)
 
 n=0
 for hw in v100 l4 a100 h100 h200; do

@@ -6,7 +6,7 @@
 
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
-SEEDS=("${@:-1 2 3}")
+SEEDS=("$@"); [ ${#SEEDS[@]} -eq 0 ] && SEEDS=(1 2 3)
 N_ITERS=(10 30 100 300 1000 3000 10000)
 
 n=0

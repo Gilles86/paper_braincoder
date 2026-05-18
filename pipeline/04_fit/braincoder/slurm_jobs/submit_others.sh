@@ -10,7 +10,7 @@
 # files under their respective pipeline/04_fit/<pkg>/ directories.
 
 set -euo pipefail
-SEEDS=("${@:-1 2 3}")
+SEEDS=("$@"); [ ${#SEEDS[@]} -eq 0 ] && SEEDS=(1 2 3)
 REPO="$HOME/git/paper_braincoder"
 
 n=0
