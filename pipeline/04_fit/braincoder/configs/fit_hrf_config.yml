@@ -19,6 +19,8 @@ fitting:
       n_steps: 20
   n_gd_iterations: 1000
   fit_hrf: true
+  l2_norm: 0.00001
+  force_positive_amplitude: false
 synth:
   origin: 'prfsynth' # prfpy
   tr: 1
