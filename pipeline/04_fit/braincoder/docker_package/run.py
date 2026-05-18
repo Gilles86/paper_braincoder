@@ -2,14 +2,18 @@ import os
 import os.path as op
 import argparse
 import time
-import braincoder
 import json
+import numpy as np
+import pandas as pd
+import yaml
 from nilearn import image
 from nilearn import maskers
-import pandas as pd
-import numpy as np
-import yaml
-import tensorflow as tf
+
+# Keras 3 picks its backend from $KERAS_BACKEND (tensorflow / jax / torch).
+# Import keras BEFORE braincoder so the backend is locked in by the time
+# braincoder's models compile any tf.function / jax.jit / torch.compile.
+import keras
+import braincoder
 
 __version__ = open(op.join(op.dirname(op.realpath(__file__)),
                                 'version')).read()
@@ -46,11 +50,12 @@ parser.add_argument('--seed', type=int, default=42,
 
 args = parser.parse_args()
 print(args)
-print(f'braincoder version: {braincoder.__version__ if hasattr(braincoder, "__version__") else "unknown"}')
-print(f'tensorflow version: {tf.__version__}')
+print(f'braincoder version: {getattr(braincoder, "__version__", "unknown")}')
+print(f'keras version:      {keras.__version__}')
+print(f'keras backend:      {keras.backend.backend()}')
 
-np.random.seed(args.seed)
-tf.random.set_seed(args.seed)
+keras.utils.set_random_seed(args.seed)  # seeds numpy + the active backend
+np.random.seed(args.seed)               # belt + suspenders
 
 with open(args.config_file, 'r') as f:
     opts = yaml.safe_load(f)

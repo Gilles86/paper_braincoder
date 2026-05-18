@@ -19,13 +19,16 @@ REPO="$HOME/git/paper_braincoder"
 YML="$REPO/create_env/environment_cpu.yml"
 ENV_NAME=$(grep '^name:' "$YML" | awk '{print $2}')
 
+# Clean rebuild: `conda env update --prune` doesn't pip-uninstall extras
+# that the YML dropped, so an outdated env can keep stale packages around
+# (we hit this with leftover tensorflow alongside tensorflow-cpu). Just
+# nuke and recreate — these envs build in <10 min anyway.
 if conda env list | awk '{print $1}' | grep -qx "$ENV_NAME"; then
-    echo "[create_cpu_env] $ENV_NAME exists; updating"
-    conda env update -f "$YML" --prune
-else
-    echo "[create_cpu_env] creating $ENV_NAME"
-    conda env create -f "$YML"
+    echo "[create_cpu_env] $ENV_NAME exists; removing for clean rebuild"
+    conda env remove -y -n "$ENV_NAME"
 fi
+echo "[create_cpu_env] creating $ENV_NAME"
+conda env create -f "$YML"
 
 conda activate "$ENV_NAME"
 python -c "import keras; print('Keras', keras.__version__, 'backend:', keras.backend.backend())"

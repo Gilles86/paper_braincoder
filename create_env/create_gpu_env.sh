@@ -34,13 +34,14 @@ echo "[create_gpu_env] node=$(hostname)  date=$(date -Is)"
 nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv | head -3
 
 ENV_NAME=$(grep '^name:' "$YML" | awk '{print $2}')
+
+# Clean rebuild — see commentary in create_cpu_env.sh.
 if conda env list | awk '{print $1}' | grep -qx "$ENV_NAME"; then
-    echo "[create_gpu_env] $ENV_NAME exists; updating"
-    conda env update -f "$YML" --prune
-else
-    echo "[create_gpu_env] creating $ENV_NAME"
-    conda env create -f "$YML"
+    echo "[create_gpu_env] $ENV_NAME exists; removing for clean rebuild"
+    conda env remove -y -n "$ENV_NAME"
 fi
+echo "[create_gpu_env] creating $ENV_NAME"
+conda env create -f "$YML"
 
 # Sanity check the backend sees the GPU
 conda activate "$ENV_NAME"
