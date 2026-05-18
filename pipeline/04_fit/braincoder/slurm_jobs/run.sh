@@ -65,21 +65,31 @@ mkdir -p "$OUTPUT_DIR"
 # --- backend + env selection -------------------------------------------
 # CPU env only ships with the TF backend; GPU work picks the matching
 # CUDA env. JAX/torch on CPU is intentionally not supported here.
-if [ "$HARDWARE" = "cpu" ]; then
-    if [ "$BACKEND" != "tensorflow" ]; then
-        echo "[run.sh] CPU hardware only supports backend=tensorflow (got: $BACKEND)" >&2
-        exit 1
-    fi
-    ENV_NAME="paper_braincoder_cpu"
-    export CUDA_VISIBLE_DEVICES=""
-else
-    case "$BACKEND" in
-        tensorflow) ENV_NAME="paper_braincoder_cuda" ;;
-        jax)        ENV_NAME="paper_braincoder_cuda_jax" ;;
-        torch)      ENV_NAME="paper_braincoder_cuda_torch" ;;
-        *) echo "Unknown backend: $BACKEND"; exit 1 ;;
-    esac
-fi
+case "$HARDWARE" in
+    cpu | cpu8 | cpu16 | cpu32)
+        if [ "$BACKEND" != "tensorflow" ]; then
+            echo "[run.sh] CPU hardware only supports backend=tensorflow (got: $BACKEND)" >&2
+            exit 1
+        fi
+        ENV_NAME="paper_braincoder_cpu"
+        export CUDA_VISIBLE_DEVICES=""
+        # Pin BLAS / TF thread counts to the SLURM allocation so cpu8 != cpu32
+        # purely by virtue of the env vars (not just by what SLURM gave us).
+        ncpu="${SLURM_CPUS_PER_TASK:-1}"
+        export OMP_NUM_THREADS="$ncpu"
+        export MKL_NUM_THREADS="$ncpu"
+        export TF_NUM_INTRAOP_THREADS="$ncpu"
+        export TF_NUM_INTEROP_THREADS=2
+        ;;
+    *)
+        case "$BACKEND" in
+            tensorflow) ENV_NAME="paper_braincoder_cuda" ;;
+            jax)        ENV_NAME="paper_braincoder_cuda_jax" ;;
+            torch)      ENV_NAME="paper_braincoder_cuda_torch" ;;
+            *) echo "Unknown backend: $BACKEND"; exit 1 ;;
+        esac
+        ;;
+esac
 export KERAS_BACKEND="$BACKEND"
 
 conda activate "$ENV_NAME"
