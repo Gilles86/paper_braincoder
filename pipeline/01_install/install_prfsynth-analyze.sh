@@ -1,14 +1,15 @@
-#!/bin/bash
-#SBATCH --job-name=pull_prfanalyze       # Job name
-#SBATCH --output=logs/pull_prfanalyze_%j.out # Standard output log (%j will be replaced by the job ID)
-#SBATCH --time=1:00:00                   # Time limit (hh:mm:ss)
-#SBATCH --nodes=1                        # Number of nodes
-#SBATCH --ntasks=1                       # Number of tasks
-#SBATCH --cpus-per-task=16                # CPUs per task
-#SBATCH --mem=32G                         # Memory allocation
+#!/bin/bash -l
+#SBATCH --job-name=pull_prfanalyze
+#SBATCH --output=logs/%x-%j.out
+#SBATCH --error=logs/%x-%j.err
+#SBATCH --time=1:00:00
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=16G
+#SBATCH --account=zne.uzh
 
-# Load Singularity module (adjust as needed for your system)
-module load singularityce
+set -eo pipefail
+module load apptainer
 
 # Define default target directory for Singularity images
 DEFAULT_TARGET_DIR=/shares/zne.uzh/containers
@@ -34,13 +35,12 @@ IMAGES=(
 for DOCKER_IMAGE in "${IMAGES[@]}"; do
     IMAGE_NAME=$(basename "$DOCKER_IMAGE" | sed 's/:/_/').sif
     echo "Pulling $DOCKER_IMAGE into $TARGET_DIR/$IMAGE_NAME..."
-    singularity pull "$IMAGE_NAME" "$DOCKER_IMAGE"
+    apptainer pull "$IMAGE_NAME" "$DOCKER_IMAGE"
 
-    # Check if the image was successfully pulled
     if [[ -f "$TARGET_DIR/$IMAGE_NAME" ]]; then
-        echo "Singularity image pulled successfully: $TARGET_DIR/$IMAGE_NAME"
+        echo "Image pulled: $TARGET_DIR/$IMAGE_NAME"
     else
-        echo "Failed to pull Singularity image: $DOCKER_IMAGE"
+        echo "Failed to pull image: $DOCKER_IMAGE"
         exit 1
     fi
 done

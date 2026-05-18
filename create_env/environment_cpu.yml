@@ -11,6 +11,11 @@
 #
 # Stack: Python 3.12 + Keras 3.13+ + TF 2.20 CPU. Mirror of
 # environment_cuda.yml so the same code runs both places.
+#
+# Deliberately minimal: this env exists to run the PRF benchmark
+# (GaussianPRF2D + ParameterFitter), not braincoder's decoding side.
+# So no tensorflow-probability — it would pull a second TF version
+# and collide with the pinned tensorflow-cpu.
 
 name: paper_braincoder_cpu
 channels:
@@ -29,8 +34,7 @@ dependencies:
   - tqdm
   - pyyaml
 
-  # Neuroimaging — we just read NIfTI / TSV outputs from the BIDS-app
-  # fitters, so a minimal subset suffices.
+  # Neuroimaging
   - nibabel
   - nilearn
   - pybids
@@ -40,13 +44,6 @@ dependencies:
   - pytest
 
   - pip:
-      # Keras 3 / TF 2.20 CPU.
       - "tensorflow-cpu==2.20.*"
       - "keras>=3.13,<4"
-      - "tf_keras>=2.20"
-      - "tensorflow-probability>=0.25"
-      - protobuf>=4.21
-
-      # Braincoder itself — pinned at env-build time for reproducibility;
-      # override with `pip install -e libs/braincoder` for editable dev.
       - "braincoder @ git+https://github.com/Gilles86/braincoder.git@main"

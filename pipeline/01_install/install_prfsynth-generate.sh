@@ -1,14 +1,15 @@
-#!/bin/bash
-#SBATCH --job-name=pull_prfsynth          # Job name
-#SBATCH --output=logs/pull_prfsynth_%j.out    # Standard output log (%j will be replaced by the job ID)
-#SBATCH --time=1:00:00                   # Time limit (hh:mm:ss)
-#SBATCH --nodes=16                       # Number of nodes
-#SBATCH --ntasks=16                      # Number of tasks (1 per node by default)
-#SBATCH --cpus-per-task=1                # CPUs per task
-#SBATCH --mem=64G                         # Memory allocation
+#!/bin/bash -l
+#SBATCH --job-name=pull_prfsynth
+#SBATCH --output=logs/%x-%j.out
+#SBATCH --error=logs/%x-%j.err
+#SBATCH --time=1:00:00
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=8G
+#SBATCH --account=zne.uzh
 
-# Load Singularity module (adjust as needed for your system)
-module load singularityce
+set -eo pipefail
+module load apptainer
 
 # Define default target directory for Singularity image
 DEFAULT_TARGET_DIR=/shares/zne.uzh/containers
@@ -24,10 +25,9 @@ mkdir -p "$TARGET_DIR"
 # Change to the target directory
 cd "$TARGET_DIR"
 
-echo "Singularity-cache dir: $SINGULARITY_CACHEDIR"
+echo "Apptainer cache dir: ${APPTAINER_CACHEDIR:-${HOME}/.apptainer/cache}"
 
-# Pull the Singularity image
-srun singularity pull "$IMAGE_NAME" "$DOCKER_IMAGE"
+apptainer pull "$IMAGE_NAME" "$DOCKER_IMAGE"
 
 # Check if the image was successfully pulled
 echo "Finished pulling the image. Checking..."

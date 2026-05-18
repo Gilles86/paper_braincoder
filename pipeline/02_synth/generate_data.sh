@@ -1,14 +1,15 @@
-#!/bin/bash
-#SBATCH --job-name=synthesize_data          # Job name
-#SBATCH --output=logs/synthesize_data_prfsynth_%j.out    # Standard output log (%j will be replaced by the job ID)
-#SBATCH --time=1:00:00                   # Time limit (hh:mm:ss)
-#SBATCH --nodes=16                       # Number of nodes
-#SBATCH --ntasks=16                      # Number of tasks (1 per node by default)
-#SBATCH --cpus-per-task=1                # CPUs per task
-#SBATCH --mem=64G                         # Memory allocation
+#!/bin/bash -l
+#SBATCH --job-name=synthesize_data
+#SBATCH --output=logs/%x-%j.out
+#SBATCH --error=logs/%x-%j.err
+#SBATCH --time=1:00:00
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=16G
+#SBATCH --account=zne.uzh
 
-# Load Singularity module (adjust as needed for your system)
-module load singularityce
+set -eo pipefail
+module load apptainer
 
 # Default base directory and script directory
 DEFAULT_BASEDIR="/shares/zne.uzh/gdehol/ds-prfsynth"
@@ -36,7 +37,7 @@ if [[ ! -f "$config_file" ]]; then
 fi
 
 # Run the Singularity command
-singularity exec --cleanenv \
+apptainer exec --cleanenv \
     --bind "$config_file:/flywheel/v0/input/config.json" \
     --bind "$OUTPUT_DIR:/flywheel/v0/output" \
     "$SIF_IMAGE" /flywheel/v0/run

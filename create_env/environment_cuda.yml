@@ -12,10 +12,9 @@
 # `tensorflow[and-cuda]==2.20.*` bundles its own CUDA libs via pip
 # wheels, so no `module load cuda/...` is required.
 #
-# JAX and PyTorch backends live in separate envs (see
-# environment_cuda_jax.yml, environment_cuda_torch.yml) — combining
-# CUDA stacks in one env is unreliable in practice (cuDNN / cuBLAS
-# version conflicts).
+# Deliberately minimal: no tensorflow-probability (would pull a second
+# TF version and collide), no tf_keras (Keras 2 shim — we use Keras 3).
+# JAX and PyTorch backends live in separate envs.
 
 name: paper_braincoder_cuda
 channels:
@@ -44,8 +43,4 @@ dependencies:
   - pip:
       - "tensorflow[and-cuda]==2.20.*"
       - "keras>=3.13,<4"
-      - "tf_keras>=2.20"
-      - "tensorflow-probability>=0.25"
-      - protobuf>=4.21
-
       - "braincoder @ git+https://github.com/Gilles86/braincoder.git@main"

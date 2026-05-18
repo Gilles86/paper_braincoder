@@ -3,16 +3,17 @@
 # Build:
 #   sbatch create_env/create_gpu_env.sh jax
 #
-# Activate + set the backend before running braincoder code:
+# Activate + set the backend:
 #   conda activate paper_braincoder_cuda_jax
 #   export KERAS_BACKEND=jax
 #
 # Stack: Python 3.12 + Keras 3.13+ + JAX 0.4.30+. `jax[cuda12]`
 # bundles its own CUDA libs via pip wheels.
 #
-# `tensorflow-cpu` is included only because braincoder still has a few
-# `import tensorflow` paths for utilities; the heavy lifting goes
-# through Keras 3 → JAX on GPU.
+# No tensorflow / tensorflow-probability here — braincoder gates its
+# few `import tensorflow` paths (StimulusFitter, MCMC) behind
+# try/except, and the PRF benchmark we run goes purely through
+# Keras 3 → JAX.
 
 name: paper_braincoder_cuda_jax
 channels:
@@ -41,9 +42,4 @@ dependencies:
   - pip:
       - "jax[cuda12]>=0.4.30"
       - "keras>=3.13,<4"
-      - "tensorflow-cpu>=2.18"
-      - "tf_keras>=2.18"
-      - "tensorflow-probability>=0.25"
-      - protobuf>=4.21
-
       - "braincoder @ git+https://github.com/Gilles86/braincoder.git@main"
