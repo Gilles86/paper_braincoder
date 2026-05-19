@@ -1,0 +1,63 @@
+Bootstrap: localimage
+From: /shares/zne.uzh/containers/prfanalyze-aprf.sif
+
+# Forked image: prfanalyze-aprf-fixed
+#
+# The upstream `garikoitz/prfanalyze-aprf:2.1.5_3.1.1` (April 2023, on
+# Ubuntu Xenial + MCR R2020b) was built with an unpinned scipy. mamba
+# resolved that to a version (~1.9+) which needs GLIBCXX_3.4.26 — a
+# symbol present in libstdc++ 6.0.30 and later. But MCR R2020b ships
+# only libstdc++ 6.0.25 (GLIBCXX_3.4.25 max), and MCR's
+# LD_LIBRARY_PATH puts its bundled libs first. Net effect: scipy fails
+# to import the moment /scripts/run.py runs, the BIDS-app reports
+# "Failed to exec /solve.sh", and we get a 7-second no-op exit.
+#
+# The fix: pin scipy to <1.9 inside the conda env, so its C extensions
+# link against an older libstdc++ ABI that MCR's bundled 6.0.25 can
+# satisfy. We also pin nilearn / nibabel to versions that pair cleanly
+# with scipy 1.7.x (avoids transitive upgrade pulls).
+#
+# Building (on the cluster, login node is fine — no GPU needed):
+#   module load apptainer
+#   cd ~/git/paper_braincoder/pipeline/04_fit/aprf/container
+#   apptainer build --force prfanalyze-aprf-fixed.sif prfanalyze-aprf-fixed.def
+#
+# Then point fit_aprf_slurm.sh at the new .sif. If this works on
+# smallgrid (~10–20 min, real fitting not 7-s no-op), we'll PR
+# upstream to vistalab/PRFmodel.
+
+%post
+    set -e
+
+    # Activate the container's conda env so pip lands in the right interpreter.
+    source /opt/conda/etc/profile.d/conda.sh
+    conda activate scientific
+
+    echo "=== before fix ==="
+    python -c "import scipy; print('scipy', scipy.__version__)" || true
+    python -c "import nibabel; print('nibabel', nibabel.__version__)" || true
+
+    # Reinstall scipy at a version compiled against libstdc++ < 6.0.30
+    # (i.e. doesn't need GLIBCXX_3.4.26). scipy 1.7.x is the safe choice
+    # for the Python 3.9 in this env.
+    pip install --force-reinstall --no-deps \
+        "scipy==1.7.3" \
+        "numpy==1.21.6"
+    # nilearn 0.9.x is the latest line that supports scipy 1.7 / numpy 1.21.
+    pip install --force-reinstall --no-deps "nilearn==0.9.2"
+
+    echo "=== after fix ==="
+    python -c "import scipy; print('scipy', scipy.__version__)"
+    python -c "import numpy;  print('numpy',  numpy.__version__)"
+    python -c "import nilearn; print('nilearn', nilearn.__version__)"
+    python -c "import nibabel; print('nibabel', nibabel.__version__)"
+    python -c "from scipy import linalg, sparse; print('scipy import OK with MCR libstdc++')"
+
+%labels
+    MAINTAINER paper_braincoder fork
+    UPSTREAM garikoitz/prfanalyze-aprf:2.1.5_3.1.1
+    FIX_DESCRIPTION scipy pinned to 1.7.3 / numpy 1.21.6 / nilearn 0.9.2 so the env links against an older libstdc++ ABI satisfied by MCR R2020b
+    FIX_DATE 2026-05-19
+
+%runscript
+    exec /flywheel/v0/run.sh "$@"
