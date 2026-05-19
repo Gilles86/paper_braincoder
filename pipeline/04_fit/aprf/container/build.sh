@@ -10,6 +10,12 @@ set -euo pipefail
 
 module load apptainer
 
+# The `module load apptainer` sets APPTAINER_BINDPATH=/apps,/scratch,/shares.
+# That breaks `apptainer build` from a base .sif: the bootstrap image
+# doesn't have /apps as a mount destination, and the build fails with
+# "destination /apps doesn't exist in container". Clear it for the build.
+unset APPTAINER_BINDPATH SINGULARITY_BIND
+
 DIR="$(cd "$(dirname "$0")" && pwd)"
 DEF="$DIR/prfanalyze-aprf-fixed.def"
 OUTPUT_DIR="${OUTPUT_DIR:-/shares/zne.uzh/containers}"
