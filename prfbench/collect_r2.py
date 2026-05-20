@@ -95,6 +95,52 @@ def _r2_path(deriv_dir: Path, package: str, dataset: str) -> Path | None:
     return None
 
 
+def _modelpred_path(deriv_dir: Path, dataset: str) -> Path | None:
+    """Return the modelpred.nii.gz for this (dataset), or None if absent."""
+    base = deriv_dir / f'sub-{dataset}' / 'ses-1'
+    if not base.is_dir():
+        return None
+    candidates = [
+        base / f'sub-{dataset}_ses-1_task-prf_modelpred.nii.gz',
+        base / f'sub-{dataset}_ses-1_task-prf_acq-normal_run-01_modelpred.nii.gz',
+    ]
+    for p in candidates:
+        if p.is_file():
+            return p
+    return None
+
+
+def _bold_path(bids_folder: Path, dataset: str) -> Path | None:
+    """Return the raw BOLD NIfTI for this dataset."""
+    p = (bids_folder / f'sub-{dataset}' / 'ses-1' / 'func' /
+         f'sub-{dataset}_ses-1_task-prf_acq-normal_run-01_bold.nii.gz')
+    return p if p.is_file() else None
+
+
+def _r2_from_modelpred(modelpred_path: Path, bold_path: Path) -> np.ndarray:
+    """Voxelwise R² from prediction and observed BOLD timeseries.
+
+    R² = 1 - SS_res / SS_tot, computed per voxel across time. Returns a
+    flat array, same voxel order as the input NIfTIs."""
+    pred = np.asarray(nib.load(str(modelpred_path)).get_fdata(), dtype=np.float64)
+    bold = np.asarray(nib.load(str(bold_path)).get_fdata(),       dtype=np.float64)
+
+    # Both are (X, Y, Z, T) shape; reshape to (n_voxels, T).
+    pred = pred.reshape(-1, pred.shape[-1])
+    bold = bold.reshape(-1, bold.shape[-1])
+    if pred.shape != bold.shape:
+        raise ValueError(f'shape mismatch {pred.shape} vs {bold.shape}')
+
+    resid = bold - pred
+    ss_res = (resid ** 2).sum(axis=1)
+    bold_mean = bold.mean(axis=1, keepdims=True)
+    ss_tot = ((bold - bold_mean) ** 2).sum(axis=1)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        r2 = 1.0 - ss_res / ss_tot
+    r2[~np.isfinite(r2)] = np.nan
+    return r2.astype(np.float32)
+
+
 def _summarize(r2: np.ndarray) -> dict:
     """Reduce a voxelwise R² array to scalar summaries. Filters NaN."""
     arr = np.asarray(r2, dtype=np.float64).ravel()
@@ -137,10 +183,23 @@ def collect(bids_folder: Path, datasets: list[str], keep_voxelwise: bool = True
 
         for dataset in datasets:
             p = _r2_path(deriv_dir, axes['package'], dataset)
-            if p is None:
-                continue
-            r2 = nib.load(str(p)).get_fdata()
-            row = {**axes, 'dataset': dataset, 'r2_path': str(p), **_summarize(r2)}
+            if p is not None:
+                r2 = nib.load(str(p)).get_fdata()
+                src = str(p)
+            else:
+                # Compute R² from modelpred.nii.gz + raw BOLD (AFNI / popeye
+                # / mrVista don't ship r2.nii.gz themselves).
+                mp = _modelpred_path(deriv_dir, dataset)
+                bold = _bold_path(bids_folder, dataset)
+                if mp is None or bold is None:
+                    continue
+                try:
+                    r2 = _r2_from_modelpred(mp, bold)
+                except ValueError as e:
+                    print(f'[collect_r2] skip {deriv_dir.name}/{dataset}: {e}')
+                    continue
+                src = f'computed:{mp.name}'
+            row = {**axes, 'dataset': dataset, 'r2_path': src, **_summarize(r2)}
             summary_rows.append(row)
 
             if keep_voxelwise:
