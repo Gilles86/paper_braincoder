@@ -24,7 +24,11 @@ SIF_OUT="$OUTPUT_DIR/prfanalyze-aprf-fixed.sif"
 echo "[build] def: $DEF"
 echo "[build] out: $SIF_OUT"
 
-apptainer build --force "$SIF_OUT" "$DEF"
+# --ignore-fakeroot-command: apptainer's bundled `faked` daemon was built
+# against glibc 2.33+. The bootstrap container is Ubuntu Xenial (glibc
+# 2.23), so faked exits with `GLIBC_2.33 not found`. Our %post only
+# writes to /opt/conda which is user-owned anyway, so root isn't needed.
+apptainer build --force --ignore-fakeroot-command "$SIF_OUT" "$DEF"
 
 echo "[build] DONE: $SIF_OUT"
 ls -la "$SIF_OUT"
