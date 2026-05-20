@@ -141,10 +141,15 @@ def _line_label(package: str, hardware: str, variant: str) -> str:
             'v100':  'V100',
             'gpu':   'GPU',
         }.get(hardware, hardware)
+        # Spell the grid-vs-GD distinction so the reader sees why
+        # 'grid + GD' isn't strictly slower than 'grid only': the GD
+        # variant uses a sparser grid (~4× fewer candidates) and lets
+        # gradient descent refine. Without that note the two lines
+        # look paradoxical on the same axis.
         var_pretty = {
-            'grid': 'grid',
-            'full': 'grid + GD',
-            'hrf':  'grid + GD + HRF',
+            'grid': 'dense grid, no GD',
+            'full': 'coarse grid + GD',
+            'hrf':  'coarse grid + GD + HRF',
             'dn':   'DN',
         }.get(variant, variant)
         return f'braincoder, {hw_pretty} ({var_pretty})'
