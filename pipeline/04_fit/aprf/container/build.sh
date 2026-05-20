@@ -27,7 +27,21 @@ module load apptainer
 # "destination /apps doesn't exist in container".
 unset APPTAINER_BINDPATH SINGULARITY_BIND
 
-DIR="$(cd "$(dirname "$0")" && pwd)"
+# Under sbatch, "$0" is a copy of this script in /var/spool/slurmd/
+# (not where we submitted from), so dirname "$0" doesn't help. Use
+# SLURM_SUBMIT_DIR when present; fall back to the script's own dir
+# for interactive runs.
+if [ -n "${SLURM_SUBMIT_DIR:-}" ]; then
+    REPO_ROOT="$SLURM_SUBMIT_DIR"
+    # SLURM_SUBMIT_DIR may be the repo root or anywhere — find the def.
+    if [ -f "$REPO_ROOT/pipeline/04_fit/aprf/container/prfanalyze-aprf-fixed.def" ]; then
+        DIR="$REPO_ROOT/pipeline/04_fit/aprf/container"
+    else
+        DIR="$REPO_ROOT"
+    fi
+else
+    DIR="$(cd "$(dirname "$0")" && pwd)"
+fi
 DEF="$DIR/prfanalyze-aprf-fixed.def"
 OUTPUT_DIR="${OUTPUT_DIR:-/shares/zne.uzh/containers}"
 SIF_OUT="$OUTPUT_DIR/prfanalyze-aprf-fixed.sif"

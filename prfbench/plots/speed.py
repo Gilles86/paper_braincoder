@@ -36,6 +36,19 @@ TIME_TICKS = [1, 10, 60, 600, 3_600, 28_800, 86_400]
 TIME_TICK_LABELS = ['1 s', '10 s', '1 min', '10 min', '1 h', '8 h', '1 d']
 
 
+def _format_duration(seconds: float) -> str:
+    """Render `seconds` as a human-friendly short label.
+    Examples: 25 → '25 s', 92 → '1.5 min', 600 → '10 min', 3600 → '1 h',
+    14400 → '4 h'."""
+    if seconds < 60:
+        return f'{seconds:.0f} s'
+    if seconds < 3_600:
+        mins = seconds / 60
+        return f'{mins:.0f} min' if mins >= 10 else f'{mins:.1f} min'
+    hours = seconds / 3_600
+    return f'{hours:.0f} h' if hours >= 10 else f'{hours:.1f} h'
+
+
 DATASET_ORDER = ['smallgrid', 'mediumgrid', 'largegrid', 'vanes2019']
 
 # Linestyle + marker shape encode variant — both for redundancy with color
@@ -71,6 +84,7 @@ def _aggregate(
     df: pd.DataFrame,
     hardware_subset: list[str] | None = None,
     variant_subset: list[str] | None = None,
+    backend_subset: list[str] | None = None,
 ) -> pd.DataFrame:
     """Mean + SEM over seeds; one row per
     (package, hardware, backend, variant, dataset). Drops convergence-sweep
@@ -89,6 +103,10 @@ def _aggregate(
 
     if variant_subset is not None:
         keep = (df['package'] != 'braincoder') | df['variant'].isin(variant_subset)
+        df = df[keep]
+
+    if backend_subset is not None:
+        keep = (df['package'] != 'braincoder') | df['backend'].isin(backend_subset)
         df = df[keep]
 
     df['problem_size'] = df['n_voxels'] * df['n_timepoints']
@@ -163,6 +181,24 @@ def _plot_panel_runtime(ax: plt.Axes, agg: pd.DataFrame) -> None:
                 grp['mean'] - grp['sem'], grp['mean'] + grp['sem'],
                 color=color, alpha=0.18, lw=0, zorder=1,
             )
+
+        # Per-point duration labels. CPU lines go above the marker, GPU
+        # lines below — separates the two grid lines at every dataset
+        # (cpu32/grid and a100/grid overlap heavily in y).
+        if hw.startswith('cpu'):
+            offset, va = (0, 7), 'bottom'
+        else:
+            offset, va = (0, -7), 'top'
+        for xi, mean in zip(xs, grp['mean']):
+            if pd.notna(mean):
+                ax.annotate(
+                    _format_duration(float(mean)),
+                    xy=(xi, mean),
+                    xytext=offset, textcoords='offset points',
+                    fontsize=7, color=color,
+                    ha='center', va=va,
+                    zorder=3,
+                )
 
         right_x = xs[-1]
         right_y = float(grp.iloc[-1]['mean'])
@@ -282,6 +318,12 @@ def main() -> None:
         help='Include all variants (grid/full/hrf/dn). '
              'Default keeps just grid + full.',
     )
+    p.add_argument(
+        '--all-backends', action='store_true',
+        help='Include all backends (tensorflow/jax/torch). '
+             'Default keeps tensorflow (the JAX/torch comparison '
+             'has its own figure).',
+    )
     args = p.parse_args()
 
     set_style()
@@ -289,10 +331,14 @@ def main() -> None:
     # Default subset for the lean cross-package figure:
     #   - hardware: cpu32 + a100 only (the two reference points)
     #   - variant:  grid + full (drop hrf and dn — those belong elsewhere)
-    # Pass --all-hardware / --all-variants to disable.
-    hw_subset = None if args.all_hardware else ['cpu32', 'a100']
+    #   - backend:  tensorflow (the JAX / torch backend comparison gets
+    #               its own figure)
+    # Pass --all-* to disable each axis filter.
+    hw_subset  = None if args.all_hardware else ['cpu32', 'a100']
     var_subset = None if args.all_variants else ['grid', 'full', 'default']
-    agg = _aggregate(df, hardware_subset=hw_subset, variant_subset=var_subset)
+    bk_subset  = None if args.all_backends else ['tensorflow', 'native']
+    agg = _aggregate(df, hardware_subset=hw_subset,
+                     variant_subset=var_subset, backend_subset=bk_subset)
     if agg.empty:
         raise SystemExit(f'No runtimes in {args.tsv}. Run cluster jobs first.')
 
