@@ -67,15 +67,17 @@ def _line_color(package: str, hardware: str) -> str:
     return PALETTE_PACKAGE.get(package, '0.4')
 
 
-def _aggregate(df: pd.DataFrame, hardware_subset: list[str] | None = None) -> pd.DataFrame:
+def _aggregate(
+    df: pd.DataFrame,
+    hardware_subset: list[str] | None = None,
+    variant_subset: list[str] | None = None,
+) -> pd.DataFrame:
     """Mean + SEM over seeds; one row per
     (package, hardware, backend, variant, dataset). Drops convergence-sweep
     cells (n_iter != 'default').
 
-    If `hardware_subset` is given, restrict braincoder rows to those
-    hardware tiers (non-braincoder packages always pass through). Default
-    is cpu32 + every GPU type — drops the cpu8/cpu16 thread-scaling axis
-    from this figure (it lives in fig_cpu_threads.py).
+    If `hardware_subset` / `variant_subset` are given, restrict braincoder
+    rows to those tiers (non-braincoder packages always pass through).
     """
     df = df.copy()
     # Drop convergence sweep — those belong to fig_convergence.
@@ -83,6 +85,10 @@ def _aggregate(df: pd.DataFrame, hardware_subset: list[str] | None = None) -> pd
 
     if hardware_subset is not None:
         keep = (df['package'] != 'braincoder') | df['hardware'].isin(hardware_subset)
+        df = df[keep]
+
+    if variant_subset is not None:
+        keep = (df['package'] != 'braincoder') | df['variant'].isin(variant_subset)
         df = df[keep]
 
     df['problem_size'] = df['n_voxels'] * df['n_timepoints']
@@ -108,10 +114,22 @@ def _aggregate(df: pd.DataFrame, hardware_subset: list[str] | None = None) -> pd
 def _line_label(package: str, hardware: str, variant: str) -> str:
     """Short label for endpoint annotation."""
     if package == 'braincoder':
-        # Hardware tier + variant only — the "braincoder/" prefix is
-        # implicit given the color (red = AFNI, etc).
-        return f'{hardware}, {variant}'
-    # Non-braincoder fitters are CPU-only and have one variant.
+        hw_pretty = {
+            'cpu32': 'CPU',
+            'a100':  'A100',
+            'h100':  'H100',
+            'h200':  'H200',
+            'l4':    'L4',
+            'v100':  'V100',
+            'gpu':   'GPU',
+        }.get(hardware, hardware)
+        var_pretty = {
+            'grid': 'grid',
+            'full': 'grid + GD',
+            'hrf':  'grid + GD + HRF',
+            'dn':   'DN',
+        }.get(variant, variant)
+        return f'braincoder, {hw_pretty} ({var_pretty})'
     return package
 
 
@@ -135,9 +153,9 @@ def _plot_panel_runtime(ax: plt.Axes, agg: pd.DataFrame) -> None:
         xs = [x_index[ds] for ds in grp['dataset']]
         ax.plot(
             xs, grp['mean'],
-            color=color, linestyle=ls,
-            marker=marker, markersize=5.0, markeredgecolor='white',
-            markeredgewidth=0.6, zorder=2,
+            color=color, linestyle=ls, linewidth=1.4,
+            marker=marker, markersize=6.0, markeredgecolor='white',
+            markeredgewidth=0.7, zorder=2,
         )
         if grp['sem'].notna().any():
             ax.fill_between(
@@ -154,19 +172,20 @@ def _plot_panel_runtime(ax: plt.Axes, agg: pd.DataFrame) -> None:
     # Stagger labels vertically when they would collide.
     label_positions.sort(key=lambda t: t[0])
     last_y_log = -np.inf
-    min_log_gap = 0.08
+    min_log_gap = 0.10
     for y, label, color, x in label_positions:
         y_log = np.log10(y)
         if y_log - last_y_log < min_log_gap:
             y = 10 ** (last_y_log + min_log_gap)
         last_y_log = np.log10(y)
-        ax.text(x + 0.08, y, label, color=color, fontsize=7.5,
-                ha='left', va='center')
+        ax.text(x + 0.10, y, label, color=color, fontsize=9,
+                ha='left', va='center', fontweight='medium')
 
     ax.set_yscale('log')
     ax.set_xticks(list(x_index.values()))
-    ax.set_xticklabels(DATASET_ORDER, rotation=20, ha='right')
-    ax.set_xlim(-0.3, len(DATASET_ORDER) - 1 + 1.3)  # extra room on the right for labels
+    ax.set_xticklabels(DATASET_ORDER, rotation=20, ha='right', fontsize=10)
+    ax.tick_params(axis='y', labelsize=10)
+    ax.set_xlim(-0.3, len(DATASET_ORDER) - 1 + 1.8)  # extra room on the right for labels
 
     # Snap ylim to the nearest TIME_TICKS around the data range BEFORE
     # the FixedLocator runs, so all our labels are visible.
@@ -255,22 +274,29 @@ def main() -> None:
     )
     p.add_argument(
         '--all-hardware', action='store_true',
-        help='Include cpu8/cpu16 thread-scaling rows. Default omits them.',
+        help='Include all hardware tiers (cpu8/cpu16/gpu/h100/h200/l4/v100). '
+             'Default keeps just cpu32 + a100 for clarity.',
+    )
+    p.add_argument(
+        '--all-variants', action='store_true',
+        help='Include all variants (grid/full/hrf/dn). '
+             'Default keeps just grid + full.',
     )
     args = p.parse_args()
 
     set_style()
     df = pd.read_csv(args.tsv, sep='\t')
-    # Default hardware subset: drop cpu8/cpu16 (the thread-scaling axis
-    # has its own plot). Pass `--all-hardware` to disable.
-    hw_subset = None if args.all_hardware else [
-        'cpu32', 'gpu', 'a100', 'h100', 'h200', 'l4', 'v100',
-    ]
-    agg = _aggregate(df, hardware_subset=hw_subset)
+    # Default subset for the lean cross-package figure:
+    #   - hardware: cpu32 + a100 only (the two reference points)
+    #   - variant:  grid + full (drop hrf and dn — those belong elsewhere)
+    # Pass --all-hardware / --all-variants to disable.
+    hw_subset = None if args.all_hardware else ['cpu32', 'a100']
+    var_subset = None if args.all_variants else ['grid', 'full', 'default']
+    agg = _aggregate(df, hardware_subset=hw_subset, variant_subset=var_subset)
     if agg.empty:
         raise SystemExit(f'No runtimes in {args.tsv}. Run cluster jobs first.')
 
-    fig, ax = plt.subplots(figsize=(5.5, 3.6), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(6.0, 3.8), constrained_layout=True)
     _plot_panel_runtime(ax, agg)
     # `trim=True` clips the spine to the visible tick range, which with
     # our FixedLocator hides labels above the data extent. Keep the
