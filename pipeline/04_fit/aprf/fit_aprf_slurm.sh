@@ -18,7 +18,7 @@ mkdir -p logs
 REPO="$HOME/git/paper_braincoder"
 CONFIG_FILE=$PWD/configs/prfanalyze-aprf-${IDENTIFIER}.json
 OUTPUT_DIR=/shares/zne.uzh/gdehol/ds-prfsynth
-SIF_IMAGE=/shares/zne.uzh/containers/prfanalyze-aprf.sif
+SIF_IMAGE=/shares/zne.uzh/containers/prfanalyze-aprf-fixed.sif
 
 echo "[fit_aprf_slurm] identifier=$IDENTIFIER seed=$SEED  cpus=${SLURM_CPUS_PER_TASK:-?}"
 
