@@ -27,6 +27,8 @@ apptainer exec --cleanenv --writable-tmpfs \
     --bind "$OUTPUT_DIR:/flywheel/v0/input" \
     --bind "$OUTPUT_DIR:/flywheel/v0/output" \
     --bind "$CONFIG_FILE:/flywheel/v0/input/config.json" \
+    --bind "$REPO/pipeline/04_fit/popeye/run_popeye_parallel.py:/scripts/run_popeye.py" \
+    --env POPEYE_N_JOBS=${SLURM_CPUS_PER_TASK:-32} \
     "$SIF_IMAGE" \
     /flywheel/v0/run.sh
 DURATION=$((SECONDS - START))
