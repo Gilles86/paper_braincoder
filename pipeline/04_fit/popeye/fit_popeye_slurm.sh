@@ -34,13 +34,17 @@ apptainer exec --cleanenv --writable-tmpfs \
 DURATION=$((SECONDS - START))
 
 HW="cpu${SLURM_CPUS_PER_TASK:-32}"
+# This runner bind-mounts a custom multiprocessing.Pool wrapper at
+# /scripts/run_popeye.py. To keep the upstream-serial popeye numbers
+# distinguishable in fig_speed, tag the variant explicitly.
+VARIANT="parallel${SLURM_CPUS_PER_TASK:-32}"
 RESULTS_DIR="$REPO/notes/data/runtime"
 mkdir -p "$RESULTS_DIR"
-RUNTIME_TSV="$RESULTS_DIR/popeye.default.${HW}.native.seed${SEED}-${IDENTIFIER}.tsv"
+RUNTIME_TSV="$RESULTS_DIR/popeye.${VARIANT}.${HW}.native.seed${SEED}-${IDENTIFIER}.tsv"
 {
     printf 'package\thardware\tbackend\tvariant\tdataset\tn_iter\tseed\twall_seconds\tinternal_fit_seconds\tjob_id\thostname\ttimestamp\n'
-    printf 'popeye\t%s\tnative\tdefault\t%s\tdefault\t%s\t%d\tNA\t%s\t%s\t%s\n' \
-        "$HW" "$IDENTIFIER" "$SEED" "$DURATION" "${SLURM_JOB_ID:-NA}" "$(hostname)" "$(date -Is)"
+    printf 'popeye\t%s\tnative\t%s\t%s\tdefault\t%s\t%d\tNA\t%s\t%s\t%s\n' \
+        "$HW" "$VARIANT" "$IDENTIFIER" "$SEED" "$DURATION" "${SLURM_JOB_ID:-NA}" "$(hostname)" "$(date -Is)"
 } > "$RUNTIME_TSV"
 
 echo "[fit_popeye_slurm] DONE in ${DURATION}s → $RUNTIME_TSV"

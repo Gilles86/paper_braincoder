@@ -131,6 +131,9 @@ def _aggregate(
 
 def _line_label(package: str, hardware: str, variant: str) -> str:
     """Short label for endpoint annotation."""
+    # Tag the popeye parallel-runner variants distinctly from upstream serial.
+    if package == 'popeye' and isinstance(variant, str) and variant.startswith('parallel'):
+        return f'popeye ({variant})'
     if package == 'braincoder':
         hw_pretty = {
             'cpu32': 'CPU',
@@ -342,6 +345,13 @@ def main() -> None:
     hw_subset  = None if args.all_hardware else ['cpu32', 'a100']
     var_subset = None if args.all_variants else ['grid', 'full', 'default']
     bk_subset  = None if args.all_backends else ['tensorflow', 'native']
+    # Keep popeye's parallel variants in the figure alongside grid/full
+    # (they're different package variants, not backend axes).
+    if var_subset is not None:
+        var_subset = var_subset + [
+            v for v in df['variant'].dropna().unique()
+            if isinstance(v, str) and v.startswith('parallel')
+        ]
     agg = _aggregate(df, hardware_subset=hw_subset,
                      variant_subset=var_subset, backend_subset=bk_subset)
     if agg.empty:
