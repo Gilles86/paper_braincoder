@@ -27,12 +27,14 @@ From: {{ UPSTREAM_SIF }}
 
     pip install --force-reinstall --no-deps \
         "scipy==1.7.3" \
-        "numpy==1.21.6"
+        "numpy==1.21.6" \
+        "pandas==1.4.4"
     pip install --force-reinstall --no-deps "nilearn==0.9.2"
 
     echo "=== after fix ==="
     python -c "import scipy; print('scipy', scipy.__version__)"
     python -c "import numpy;  print('numpy',  numpy.__version__)"
+    python -c "import pandas; print('pandas', pandas.__version__)"
     python -c "import nilearn; print('nilearn', nilearn.__version__)"
     python -c "from scipy import linalg, sparse; print('scipy import OK with MCR libstdc++')"
 
