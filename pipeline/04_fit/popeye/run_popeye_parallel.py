@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Drop-in parallel replacement for /scripts/run_popeye.py.
 
 Bind-mount this file at runtime via the SLURM script:
