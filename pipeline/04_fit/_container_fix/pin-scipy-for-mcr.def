@@ -1,19 +1,21 @@
 Bootstrap: localimage
-From: /shares/zne.uzh/containers/prfanalyze-vista.sif
+From: {{ UPSTREAM_SIF }}
 
-# Forked image: prfanalyze-vista-fixed
+# Generic %post that downgrades scipy / numpy / nilearn so they link
+# against a libstdc++ ABI satisfied by MCR R2020b's bundled
+# /opt/mcr/v99/sys/os/glnxa64/libstdc++.so.6 (6.0.25, GLIBCXX_3.4.25).
 #
-# Same problem as prfanalyze-aprf-fixed — the upstream mrVista container
-# is built on prfanalyze-base, which has MCR R2020b (libstdc++ 6.0.25,
-# max GLIBCXX_3.4.25) and an unpinned scipy in /opt/conda/envs/scientific.
-# When the image was built (2023), mamba pulled scipy >= 1.9 which needs
-# GLIBCXX_3.4.26+ → ImportError → BIDS app exits in ~7 s with no fit.
+# Every container in the `prfanalyze-*` family that's built on
+# `prfanalyze-base:3.1.1` shares this bug, so this .def is parameterized
+# by the upstream .sif path and reused.
 #
-# Same fix as aPRF: downgrade scipy/numpy/nilearn to versions compiled
-# against libstdc++ <= 6.0.25.
+# Build via the sibling build.sh:
+#   sbatch pipeline/04_fit/_container_fix/build.sh aprf
+#   sbatch pipeline/04_fit/_container_fix/build.sh vista
 #
-# Build:
-#   sbatch pipeline/04_fit/mrvista/container/build.sh
+# That script supplies UPSTREAM_SIF and chooses the output .sif name.
+#
+# See ./README.md for the diagnosis writeup and the upstream PR draft.
 
 %post
     set -e
@@ -36,9 +38,9 @@ From: /shares/zne.uzh/containers/prfanalyze-vista.sif
 
 %labels
     MAINTAINER paper_braincoder fork
-    UPSTREAM garikoitz/prfanalyze-vista:2.3.1_3.1.2
-    FIX_DESCRIPTION scipy/numpy/nilearn pinned for MCR R2020b libstdc++ compat
+    FIX_DESCRIPTION scipy/numpy/nilearn pinned for MCR R2020b libstdc++ ABI compat
     FIX_DATE 2026-05-21
+    UPSTREAM_SIF {{ UPSTREAM_SIF }}
 
 %runscript
     exec /flywheel/v0/run.sh "$@"
