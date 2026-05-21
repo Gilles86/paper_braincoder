@@ -31,38 +31,20 @@ From: {{ UPSTREAM_SIF }}
         "pandas==1.4.4"
     pip install --force-reinstall --no-deps "nilearn==0.9.2"
 
-    echo "=== after scipy/numpy fix ==="
+    echo "=== after fix ==="
     python -c "import scipy; print('scipy', scipy.__version__)"
     python -c "import numpy;  print('numpy',  numpy.__version__)"
     python -c "import pandas; print('pandas', pandas.__version__)"
     python -c "import nilearn; print('nilearn', nilearn.__version__)"
     python -c "from scipy import linalg, sparse; print('scipy import OK with MCR libstdc++')"
 
-    # ---- Replace MCR's bundled JRE 1.8 ------------------------------
-    # MCR R2020b ships JRE 1.8.0_202 (early 2019). That JVM crashes
-    # with "pure virtual method called" during init on kernel 6.x /
-    # glibc 2.39 hosts (u24 sciencecluster, apptainer 1.4). MathWorks
-    # documents that the bundled JRE can be replaced with any compatible
-    # 1.8.x. Drop in Temurin 8u432 — same major version, modern kernel
-    # patches, ABI-compatible with the MCR R2020b runtime.
-    echo "=== before JRE swap ==="
-    /opt/mcr/v99/sys/java/jre/glnxa64/jre/bin/java -version 2>&1 || echo "(MCR JRE wouldn't run)"
-
-    JRE_URL="https://github.com/adoptium/temurin8-binaries/releases/download/jdk8u432-b06/OpenJDK8U-jre_x64_linux_hotspot_8u432b06.tar.gz"
-    cd /tmp
-    wget -q "$JRE_URL" -O temurin8.tar.gz
-    tar xzf temurin8.tar.gz
-    NEW_JRE=$(ls -d /tmp/jdk8u432-b06-jre 2>/dev/null || ls -d /tmp/jdk8u*-jre | head -1)
-    [ -d "$NEW_JRE" ] || { echo "JRE extract failed"; exit 1; }
-
-    # Back up the old JRE then replace
-    MCR_JRE_DIR=/opt/mcr/v99/sys/java/jre/glnxa64/jre
-    mv "$MCR_JRE_DIR" "${MCR_JRE_DIR}.orig"
-    cp -r "$NEW_JRE" "$MCR_JRE_DIR"
-    rm -rf /tmp/temurin8.tar.gz /tmp/jdk8u*
-
-    echo "=== after JRE swap ==="
-    "$MCR_JRE_DIR/bin/java" -version 2>&1
+    # NOTE: a JRE-swap (replacing MCR's bundled Java 1.8.0_202 with
+    # Temurin 8u432) was tried and did NOT help. The "pure virtual
+    # method called" crash MCR exhibits on u24 hosts originates inside
+    # libjvm.so's C++ runtime, not the Java bytecode — MCR's compiled
+    # launcher is linked against the old libjvm's specific export ABI,
+    # so a fresh JRE doesn't restore compatibility. See UPSTREAM_ISSUE.md
+    # for the bug report being submitted to vistalab/PRFmodel.
 
 %labels
     MAINTAINER paper_braincoder fork

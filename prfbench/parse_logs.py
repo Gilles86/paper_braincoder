@@ -74,6 +74,22 @@ def parse(runtime_dir: Path) -> pd.DataFrame:
     # rows on the same line in fig_speed.
     df.loc[df['hardware'] == 'cpu', 'hardware'] = 'cpu32'
 
+    # Drop the entire aPRF package. Container is unrunnable on this
+    # cluster (MCR R2020b libjvm.so crashes "pure virtual method called"
+    # on kernel 6.x; see pipeline/04_fit/_container_fix/UPSTREAM_ISSUE.md).
+    # Every aprf row we have is a fake 7-s no-op, not a real fit.
+    n_aprf = (df['package'] == 'aprf').sum()
+    if n_aprf:
+        print(f'  dropping {n_aprf} aprf rows (container broken on u24; see UPSTREAM_ISSUE.md)')
+        df = df[df['package'] != 'aprf']
+
+    # Drop rows where the seed field was clobbered by the SEEDS array
+    # bug (literal "1 2 3" string instead of int).
+    bad_seed = df['seed'].astype(str).str.contains(' ')
+    if bad_seed.any():
+        print(f'  dropping {bad_seed.sum()} rows with malformed seed')
+        df = df[~bad_seed]
+
     # Join dataset metadata.
     meta = pd.DataFrame.from_dict(DATASET_META, orient='index').reset_index().rename(
         columns={'index': 'dataset'}
