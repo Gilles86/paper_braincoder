@@ -2,7 +2,7 @@
 #SBATCH --job-name=prfanalyze_afni
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
-#SBATCH --time=8:00:00
+#SBATCH --time=24:00:00
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=32G
 #SBATCH --ntasks=1

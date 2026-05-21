@@ -2,7 +2,7 @@
 #SBATCH --job-name=prfanalyze_popeye
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
-#SBATCH --time=2:00:00
+#SBATCH --time=24:00:00
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=0
 #SBATCH --ntasks=1

@@ -2,7 +2,7 @@
 #SBATCH --job-name=prfanalyze_vista
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
-#SBATCH --time=2:00:00
+#SBATCH --time=8:00:00
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=0
 #SBATCH --ntasks=1
@@ -18,7 +18,7 @@ mkdir -p logs
 REPO="$HOME/git/paper_braincoder"
 CONFIG_FILE=$PWD/configs/prfanalyze-vista-${IDENTIFIER}.json
 OUTPUT_DIR=/shares/zne.uzh/gdehol/ds-prfsynth
-SIF_IMAGE=/shares/zne.uzh/containers/prfanalyze-vista.sif
+SIF_IMAGE=/shares/zne.uzh/containers/prfanalyze-vista-fixed.sif
 
 echo "[fit_mrvista_slurm] identifier=$IDENTIFIER seed=$SEED  cpus=${SLURM_CPUS_PER_TASK:-?}"
 
