@@ -1,0 +1,2 @@
+package	hardware	backend	variant	dataset	n_iter	seed	wall_seconds	internal_fit_seconds	job_id	hostname	timestamp
+braincoder	a100	tensorflow	full	vanes2019	10000	3	3122	3108.29	3193623	u24-chaiam0-614	2026-05-20T08:49:38+02:00

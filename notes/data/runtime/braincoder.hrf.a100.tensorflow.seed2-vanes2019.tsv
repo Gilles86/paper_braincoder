@@ -1,0 +1,2 @@
+package	hardware	backend	variant	dataset	n_iter	seed	wall_seconds	internal_fit_seconds	job_id	hostname	timestamp
+braincoder	a100	tensorflow	hrf	vanes2019	default	2	2732	2713.21	3193577	u24-chaiam0-613	2026-05-20T04:03:34+02:00

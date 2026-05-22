@@ -1,0 +1,2 @@
+package	hardware	backend	variant	dataset	n_iter	seed	wall_seconds	internal_fit_seconds	job_id	hostname	timestamp
+braincoder	cpu	tensorflow	grid	mediumgrid	default	3	48	31.52	3193526	u24-chaihm0-651	2026-05-19T10:53:35+02:00

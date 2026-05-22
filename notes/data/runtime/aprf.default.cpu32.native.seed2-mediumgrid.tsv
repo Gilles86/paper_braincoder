@@ -1,0 +1,2 @@
+package	hardware	backend	variant	dataset	n_iter	seed	wall_seconds	internal_fit_seconds	job_id	hostname	timestamp
+aprf	cpu32	native	default	mediumgrid	default	2	6	NA	3122877	u24-cva0000-311	2026-05-19T06:16:20+02:00

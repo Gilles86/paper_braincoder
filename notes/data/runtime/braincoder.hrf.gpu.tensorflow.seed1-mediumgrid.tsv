@@ -1,0 +1,2 @@
+package	hardware	backend	variant	dataset	n_iter	seed	wall_seconds	internal_fit_seconds	job_id	hostname	timestamp
+braincoder	gpu	tensorflow	hrf	mediumgrid	default	1	197	185.87	3193533	u24-chaiam0-614	2026-05-19T12:31:51+02:00

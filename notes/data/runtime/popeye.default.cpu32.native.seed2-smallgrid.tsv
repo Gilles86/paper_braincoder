@@ -1,0 +1,2 @@
+package	hardware	backend	variant	dataset	n_iter	seed	wall_seconds	internal_fit_seconds	job_id	hostname	timestamp
+popeye	cpu32	native	default	smallgrid	default	2	6152	NA	3122886	u24-cva0000-207	2026-05-19T09:33:27+02:00

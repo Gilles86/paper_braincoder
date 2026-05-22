@@ -1,0 +1,2 @@
+package	hardware	backend	variant	dataset	n_iter	seed	wall_seconds	internal_fit_seconds	job_id	hostname	timestamp
+braincoder	cpu	tensorflow	hrf	smallgrid	default	1	170	151.88	3193509	u24-chiihm0-621	2026-05-19T10:55:37+02:00

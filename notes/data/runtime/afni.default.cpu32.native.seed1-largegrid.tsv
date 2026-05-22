@@ -1,0 +1,2 @@
+package	hardware	backend	variant	dataset	n_iter	seed	wall_seconds	internal_fit_seconds	job_id	hostname	timestamp
+afni	cpu32	native	default	largegrid	default	1	14338	NA	3122915	u24-chi0000-401	2026-05-18T18:15:32+02:00

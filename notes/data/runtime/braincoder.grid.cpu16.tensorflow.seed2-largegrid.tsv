@@ -1,0 +1,2 @@
+package	hardware	backend	variant	dataset	n_iter	seed	wall_seconds	internal_fit_seconds	job_id	hostname	timestamp
+braincoder	cpu16	tensorflow	grid	largegrid	default	2	243	223.16	3122928	u24-cva0000-309	2026-05-18T14:20:39+02:00

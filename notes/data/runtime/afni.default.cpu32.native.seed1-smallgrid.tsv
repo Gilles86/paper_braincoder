@@ -1,0 +1,2 @@
+package	hardware	backend	variant	dataset	n_iter	seed	wall_seconds	internal_fit_seconds	job_id	hostname	timestamp
+afni	cpu32	native	default	smallgrid	default	1	140	NA	3122909	u24-cva0000-207	2026-05-18T14:18:54+02:00

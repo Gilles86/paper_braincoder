@@ -1,0 +1,2 @@
+package	hardware	backend	variant	dataset	n_iter	seed	wall_seconds	internal_fit_seconds	job_id	hostname	timestamp
+afni	cpu32	native	default	mediumgrid	default	1	694	NA	3122912	u24-chaihm0-636	2026-05-18T14:28:08+02:00

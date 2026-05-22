@@ -1,0 +1,2 @@
+package	hardware	backend	variant	dataset	n_iter	seed	wall_seconds	internal_fit_seconds	job_id	hostname	timestamp
+braincoder	a100	jax	full	vanes2019	default	1	3219	3201.71	3193595	u24-chaiam0-614	2026-05-20T05:27:05+02:00

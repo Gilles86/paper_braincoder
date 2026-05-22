@@ -1,0 +1,2 @@
+package	hardware	backend	variant	dataset	n_iter	seed	wall_seconds	internal_fit_seconds	job_id	hostname	timestamp
+aprf	cpu32	native	default	largegrid	default	2	7	NA	3122880	u24-cva0000-311	2026-05-19T06:17:53+02:00

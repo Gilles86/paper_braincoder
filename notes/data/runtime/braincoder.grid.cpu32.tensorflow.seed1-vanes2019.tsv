@@ -1,0 +1,2 @@
+package	hardware	backend	variant	dataset	n_iter	seed	wall_seconds	internal_fit_seconds	job_id	hostname	timestamp
+braincoder	cpu32	tensorflow	grid	vanes2019	default	1	532	519.92	3122951	u24-chiihm0-622	2026-05-18T14:25:56+02:00

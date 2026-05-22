@@ -1,0 +1,2 @@
+package	hardware	backend	variant	dataset	n_iter	seed	wall_seconds	internal_fit_seconds	job_id	hostname	timestamp
+braincoder	a100	jax	full	largegrid	default	3	57	49.40	3193587	u24-chaiam0-613	2026-05-20T03:33:09+02:00

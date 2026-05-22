@@ -1,0 +1,2 @@
+package	hardware	backend	variant	dataset	n_iter	seed	wall_seconds	internal_fit_seconds	job_id	hostname	timestamp
+braincoder	cpu8	tensorflow	hrf	largegrid	default	3	11129	11110.48	3122926	u24-cva0000-205	2026-05-18T17:22:03+02:00

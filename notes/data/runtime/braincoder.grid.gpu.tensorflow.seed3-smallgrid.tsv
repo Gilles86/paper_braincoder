@@ -1,0 +1,2 @@
+package	hardware	backend	variant	dataset	n_iter	seed	wall_seconds	internal_fit_seconds	job_id	hostname	timestamp
+braincoder	gpu	tensorflow	grid	smallgrid	default	3	41	15.35	3193514	u24-chaiam0-614	2026-05-19T11:50:31+02:00
