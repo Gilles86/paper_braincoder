@@ -21,6 +21,7 @@ VARIANT=${3:?variant required}
 N_ITER=${4:-default}
 SEED=${5:-42}
 BACKEND=${6:-tensorflow}
+NOISE_MODEL=${7:-gaussian}
 
 # Translate hardware → SBATCH resources. Memory is set generously to
 # cover the largest dataset (vanes2019 × DN); shrink later if queue
@@ -48,6 +49,7 @@ case "$DATASET-$VARIANT-$HARDWARE" in
 esac
 
 JOBNAME="bc.${HARDWARE}.${BACKEND}.${VARIANT}.${DATASET}.s${SEED}"
+[ "$NOISE_MODEL" != "gaussian" ] && JOBNAME="${JOBNAME}.${NOISE_MODEL}"
 [ "$N_ITER" != "default" ] && JOBNAME="${JOBNAME}.n${N_ITER}"
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -58,4 +60,4 @@ sbatch $GRES \
     --cpus-per-task="$CPUS" \
     --mem="$MEM" \
     -J "$JOBNAME" \
-    "$DIR/run.sh" "$DATASET" "$HARDWARE" "$VARIANT" "$N_ITER" "$SEED" "$BACKEND"
+    "$DIR/run.sh" "$DATASET" "$HARDWARE" "$VARIANT" "$N_ITER" "$SEED" "$BACKEND" "$NOISE_MODEL"
