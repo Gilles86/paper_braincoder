@@ -83,6 +83,20 @@ def parse(runtime_dir: Path) -> pd.DataFrame:
         print(f'  dropping {n_aprf} aprf rows (container broken on u24; see UPSTREAM_ISSUE.md)')
         df = df[df['package'] != 'aprf']
 
+    # Drop AFNI's original-shape vanes2019 attempts. AFNI's MATLAB
+    # binary crashed after ~22 h with 'nim is NULL' on the surface-
+    # packed (118584,1,1,120) BOLD; SLURM saw the process exit 0
+    # (MATLAB swallows the error) so the TSV reports a fake "COMPLETED"
+    # in 22 h. We re-ran on a reshaped (486,244,1,120) layout under
+    # sub-vanes2019afni; rename those back to 'vanes2019' so the figure
+    # line is continuous.
+    bogus_afni = (df['package'] == 'afni') & (df['dataset'] == 'vanes2019')
+    if bogus_afni.any():
+        print(f'  dropping {bogus_afni.sum()} afni vanes2019 rows (pre-reshape; MATLAB silently no-op)')
+        df = df[~bogus_afni]
+    df.loc[(df['package'] == 'afni') & (df['dataset'] == 'vanes2019afni'),
+           'dataset'] = 'vanes2019'
+
     # Drop rows where the seed field was clobbered by the SEEDS array
     # bug (literal "1 2 3" string instead of int).
     bad_seed = df['seed'].astype(str).str.contains(' ')
