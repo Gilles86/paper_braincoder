@@ -31,6 +31,7 @@ VARIANT=${3:?variant required}
 N_ITER=${4:-default}
 SEED=${5:-42}
 BACKEND=${6:-tensorflow}
+NOISE_MODEL=${7:-gaussian}     # gaussian | ssq — see run.py docstring
 
 BASEDIR="/shares/zne.uzh/gdehol/ds-prfsynth"
 REPO="$HOME/git/paper_braincoder"
@@ -57,6 +58,7 @@ fi
 
 # --- output directory keyed by all axes ---------------------------------
 TAG="${VARIANT}.${HARDWARE}.${BACKEND}"
+if [ "$NOISE_MODEL" != "gaussian" ]; then TAG="${TAG}.${NOISE_MODEL}"; fi
 if [ "$N_ITER" != "default" ]; then TAG="${TAG}.n${N_ITER}"; fi
 TAG="${TAG}.seed${SEED}"
 OUTPUT_DIR="$BASEDIR/BIDS/derivatives/prfanalyze-braincoder.${TAG}"
@@ -95,7 +97,7 @@ export KERAS_BACKEND="$BACKEND"
 conda activate "$ENV_NAME"
 
 # --- compose CLI extras -------------------------------------------------
-EXTRA_ARGS=(--seed "$SEED")
+EXTRA_ARGS=(--seed "$SEED" --noise-model "$NOISE_MODEL")
 if [ "$N_ITER" != "default" ]; then
     EXTRA_ARGS+=(--n_iterations "$N_ITER")
 fi
@@ -127,10 +129,11 @@ RESULTS_DIR="$REPO/notes/data/runtime"
 mkdir -p "$RESULTS_DIR"
 RUNTIME_TSV="$RESULTS_DIR/braincoder.${TAG}-${DATASET}.tsv"
 {
-    printf 'package\thardware\tbackend\tvariant\tdataset\tn_iter\tseed\twall_seconds\tinternal_fit_seconds\tjob_id\thostname\ttimestamp\n'
-    printf 'braincoder\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\t%s\t%s\t%s\n' \
+    printf 'package\thardware\tbackend\tvariant\tdataset\tn_iter\tseed\twall_seconds\tinternal_fit_seconds\tjob_id\thostname\ttimestamp\tnoise_model\n'
+    printf 'braincoder\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\n' \
         "$HARDWARE" "$BACKEND" "$VARIANT" "$DATASET" "$N_ITER" "$SEED" \
-        "$DURATION" "$INTERNAL" "${SLURM_JOB_ID:-NA}" "$(hostname)" "$(date -Is)"
+        "$DURATION" "$INTERNAL" "${SLURM_JOB_ID:-NA}" "$(hostname)" "$(date -Is)" \
+        "$NOISE_MODEL"
 } > "$RUNTIME_TSV"
 
 echo "[run.sh] DONE  ${TAG} / ${DATASET}  wall=${DURATION}s  internal=${INTERNAL}s  → $RUNTIME_TSV"

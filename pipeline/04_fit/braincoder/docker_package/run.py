@@ -47,6 +47,12 @@ parser.add_argument('--n_iterations', type=int, default=None,
                     'Used for the convergence sweep.')
 parser.add_argument('--seed', type=int, default=42,
                     help='Random seed for TF/NumPy. Used for benchmark repeats.')
+parser.add_argument('--noise-model', dest='noise_model',
+                    choices=['ssq', 'gaussian'], default='gaussian',
+                    help='Loss function for the gradient-descent fit. '
+                    'ssq = sum of squared residuals (original); gaussian = '
+                    'per-voxel Gaussian negative log-likelihood with free '
+                    'sigma — converges much faster on real fMRI per upstream.')
 
 args = parser.parse_args()
 print(args)
@@ -214,11 +220,13 @@ else:
 
         par_fitter_dn = ParameterFitter(model=model_dn, data=data, paradigm=paradigm)
         # Without HRF
-        pars_dn = par_fitter_dn.fit(init_pars=pars_dn_init, max_n_iterations=n_gd_iterations)
+        pars_dn = par_fitter_dn.fit(init_pars=pars_dn_init, max_n_iterations=n_gd_iterations,
+                                     noise_model=args.noise_model)
         final_pars = pars_dn.copy()
 
     else:
-        pars_gauss_gd = par_fitter.fit(init_pars=pars_gauss_ols, max_n_iterations=n_gd_iterations)
+        pars_gauss_gd = par_fitter.fit(init_pars=pars_gauss_ols, max_n_iterations=n_gd_iterations,
+                                        noise_model=args.noise_model)
         final_pars = pars_gauss_gd
 
 r2_gauss_gd = par_fitter.get_rsq(final_pars)
