@@ -98,6 +98,11 @@ conda activate "$ENV_NAME"
 
 # --- compose CLI extras -------------------------------------------------
 EXTRA_ARGS=(--seed "$SEED" --noise-model "$NOISE_MODEL")
+# Cost-history capture is opt-in via SAVE_HISTORY=1 in the environment;
+# off by default so regular benchmark runs do not create *_r2history.npz.
+if [ "${SAVE_HISTORY:-0}" = "1" ]; then
+    EXTRA_ARGS+=(--save-cost-history)
+fi
 if [ "$N_ITER" != "default" ]; then
     EXTRA_ARGS+=(--n_iterations "$N_ITER")
 fi

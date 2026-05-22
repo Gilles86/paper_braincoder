@@ -53,6 +53,12 @@ parser.add_argument('--noise-model', dest='noise_model',
                     'ssq = sum of squared residuals (original); gaussian = '
                     'per-voxel Gaussian negative log-likelihood with free '
                     'sigma — converges much faster on real fMRI per upstream.')
+parser.add_argument('--save-cost-history', dest='save_cost_history',
+                    action='store_true',
+                    help='Pickle the mean-best-R² convergence trajectory '
+                    '(ParameterFitter.r2_history_) next to the output NIfTIs. '
+                    'Used to diagnose whether the early-stop defaults '
+                    '(r2_atol=1e-6, lag=100) plateaued correctly.')
 
 args = parser.parse_args()
 print(args)
@@ -264,3 +270,25 @@ else:
 save_final_results(final_pars, masker, output_dir=output_dir)
 save_as_nifti(pred, masker=masker, output_dir=output_dir, filename=f'sub-{subject_id}_ses-{session}_task-prf_modelpred.nii.gz')
 save_as_nifti(r2_gauss_gd, masker, output_dir=output_dir, filename=f'sub-{subject_id}_ses-{session}_task-prf_r2.nii.gz')
+
+# --- save the GD convergence trajectory --------------------------------
+if args.save_cost_history:
+    history = getattr(par_fitter, 'r2_history_', None)
+    if opts['fitting'].get('divisive_normalisation', False):
+        history_dn = getattr(par_fitter_dn, 'r2_history_', None)
+    else:
+        history_dn = None
+    history_path = op.join(
+        output_dir,
+        f'sub-{subject_id}_ses-{session}_task-prf_r2history.npz')
+    os.makedirs(output_dir, exist_ok=True)
+    np.savez(
+        history_path,
+        gauss_gd=np.asarray(history) if history is not None else np.array([]),
+        dn_gd=np.asarray(history_dn) if history_dn is not None else np.array([]),
+        noise_model=args.noise_model,
+        max_n_iterations=n_gd_iterations,
+    )
+    print(f'WROTE_HISTORY: {history_path}  '
+          f'(gauss_gd_len={0 if history is None else len(history)}, '
+          f'dn_gd_len={0 if history_dn is None else len(history_dn)})')
