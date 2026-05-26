@@ -213,10 +213,11 @@ def _plot_panel_runtime(ax: plt.Axes, agg: pd.DataFrame) -> None:
         label = _line_label(pkg, hw, variant)
         label_positions.append((right_y, label, color, right_x))
 
-    # Stagger labels vertically when they would collide.
+    # Stagger labels vertically when they would collide. With fewer
+    # lines we can afford a larger gap so labels don't crowd.
     label_positions.sort(key=lambda t: t[0])
     last_y_log = -np.inf
-    min_log_gap = 0.10
+    min_log_gap = 0.16
     for y, label, color, x in label_positions:
         y_log = np.log10(y)
         if y_log - last_y_log < min_log_gap:
@@ -229,7 +230,7 @@ def _plot_panel_runtime(ax: plt.Axes, agg: pd.DataFrame) -> None:
     ax.set_xticks(list(x_index.values()))
     ax.set_xticklabels(DATASET_ORDER, rotation=20, ha='right', fontsize=10)
     ax.tick_params(axis='y', labelsize=10)
-    ax.set_xlim(-0.3, len(DATASET_ORDER) - 1 + 1.8)  # extra room on the right for labels
+    ax.set_xlim(-0.3, len(DATASET_ORDER) - 1 + 2.6)  # extra room on the right for labels
 
     # Snap ylim to the nearest TIME_TICKS around the data range BEFORE
     # the FixedLocator runs, so all our labels are visible.
@@ -332,32 +333,64 @@ def main() -> None:
              'Default keeps tensorflow (the JAX/torch comparison '
              'has its own figure).',
     )
+    p.add_argument(
+        '--hardware', default='a100',
+        help='Which braincoder hardware tier to show alongside the '
+             "other packages: 'a100' or 'cpu32'. Default a100.",
+    )
+    p.add_argument(
+        '--since', default='2026-05-26',
+        help='Drop braincoder rows older than this date (ISO). The '
+             "atol default flipped from 1e-6 to 1e-4 on 2026-05-26 and "
+             "noise_model default flipped from ssq to gaussian; "
+             "averaging across both eras gives misleading wall times "
+             "for vanes2019. Empty string to include everything.",
+    )
     args = p.parse_args()
 
     set_style()
     df = pd.read_csv(args.tsv, sep='\t')
+
+    # Scope the date filter to braincoder/vanes2019 only. Synthetic
+    # grids run with n_iter=100 (max=min), so early-stop's atol never
+    # fires there — old and new TSVs are equally valid. vanes2019 uses
+    # n_iter=10000 where atol matters, so we drop the pre-flip rows
+    # there to avoid mixing 45-min and 15-min cells in the median.
+    if args.since:
+        stale = ((df['package'] == 'braincoder')
+                 & (df['dataset'] == 'vanes2019')
+                 & (df['timestamp'] < args.since))
+        df = df.loc[~stale].copy()
+
     # Default subset for the lean cross-package figure:
-    #   - hardware: cpu32 + a100 only (the two reference points)
-    #   - variant:  grid + full (drop hrf and dn — those belong elsewhere)
-    #   - backend:  tensorflow (the JAX / torch backend comparison gets
-    #               its own figure)
-    # Pass --all-* to disable each axis filter.
-    hw_subset  = None if args.all_hardware else ['cpu32', 'a100']
-    var_subset = None if args.all_variants else ['grid', 'full', 'default']
+    #   - hardware: just args.hardware (one braincoder line, not two)
+    #   - variant:  full only — dense-grid-no-GD belongs elsewhere
+    #   - backend:  tensorflow
+    hw_subset  = None if args.all_hardware else [args.hardware]
+    var_subset = None if args.all_variants else ['full', 'default']
     bk_subset  = None if args.all_backends else ['tensorflow', 'native']
-    # Keep popeye's parallel variants in the figure alongside grid/full
-    # (they're different package variants, not backend axes).
+    # Keep popeye's parallel variants in the figure alongside grid/full.
     if var_subset is not None:
         var_subset = var_subset + [
             v for v in df['variant'].dropna().unique()
             if isinstance(v, str) and v.startswith('parallel')
         ]
+        # When multiple popeye variants exist for the same cell, prefer
+        # the parallel one (it's the recommended runner).
+        pop_parallel = df[(df['package'] == 'popeye')
+                          & df['variant'].astype(str).str.startswith('parallel')]
+        if not pop_parallel.empty:
+            df = pd.concat([
+                df[df['package'] != 'popeye'],
+                pop_parallel,
+            ], ignore_index=True)
+
     agg = _aggregate(df, hardware_subset=hw_subset,
                      variant_subset=var_subset, backend_subset=bk_subset)
     if agg.empty:
         raise SystemExit(f'No runtimes in {args.tsv}. Run cluster jobs first.')
 
-    fig, ax = plt.subplots(figsize=(6.0, 3.8), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(7.0, 3.8), constrained_layout=True)
     _plot_panel_runtime(ax, agg)
     # `trim=True` clips the spine to the visible tick range, which with
     # our FixedLocator hides labels above the data extent. Keep the
