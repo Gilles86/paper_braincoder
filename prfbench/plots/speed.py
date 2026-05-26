@@ -186,11 +186,13 @@ def _plot_panel_runtime(ax: plt.Axes, agg: pd.DataFrame) -> None:
         marker = MARKER_VARIANT.get(variant, 'o')
 
         xs = [x_index[ds] for ds in grp['dataset']]
+        # Single-point series get a marker only (no extrapolated line).
+        plot_ls = ls if len(grp) > 1 else 'None'
         ax.plot(
             xs, grp['mean'],
-            color=color, linestyle=ls, linewidth=1.4,
-            marker=marker, markersize=6.0, markeredgecolor='white',
-            markeredgewidth=0.7, zorder=2,
+            color=color, linestyle=plot_ls, linewidth=1.4,
+            marker=marker, markersize=7.0, markeredgecolor='white',
+            markeredgewidth=0.8, zorder=2,
         )
         if grp['sem'].notna().any():
             ax.fill_between(
@@ -199,47 +201,38 @@ def _plot_panel_runtime(ax: plt.Axes, agg: pd.DataFrame) -> None:
                 color=color, alpha=0.18, lw=0, zorder=1,
             )
 
-        # Per-point duration labels — only at first and last x position.
-        # Showing every datapoint produced overlapping clouds at the
-        # synth-grid columns where many lines crowd at <1 min.
-        if hw.startswith('cpu'):
-            offset, va = (0, 7), 'bottom'
-        else:
-            offset, va = (0, -7), 'top'
-        xs_to_annotate = {xs[0], xs[-1]}
-        for xi, mean in zip(xs, grp['mean']):
-            if pd.notna(mean) and xi in xs_to_annotate:
-                ax.annotate(
-                    _format_duration(float(mean)),
-                    xy=(xi, mean),
-                    xytext=offset, textcoords='offset points',
-                    fontsize=7, color=color,
-                    ha='center', va=va,
-                    zorder=3,
-                )
+        # Duration annotation only at the last point of each line —
+        # attached to the endpoint label below so the reader gets
+        # "package: X min" in one glance. Removes the per-point clutter
+        # at smallgrid where four braincoder lines crowded together.
+        right_mean = float(grp.iloc[-1]['mean'])
+        # (label position is set after the loop, see below.)
+        pass
 
         right_x = xs[-1]
         right_y = float(grp.iloc[-1]['mean'])
-        label = _line_label(pkg, hw, variant)
+        # Endpoint label includes the duration so per-point annotations
+        # aren't needed elsewhere.
+        label = f'{_line_label(pkg, hw, variant)} — {_format_duration(right_y)}'
         label_positions.append((right_y, label, color, right_x))
 
     # Stagger labels vertically when they would collide.
     label_positions.sort(key=lambda t: t[0])
     last_y_log = -np.inf
-    min_log_gap = 0.10
+    min_log_gap = 0.16   # ~factor 1.45 in y-space — readable spacing for 9pt labels
     for y, label, color, x in label_positions:
         y_log = np.log10(y)
         if y_log - last_y_log < min_log_gap:
             y = 10 ** (last_y_log + min_log_gap)
         last_y_log = np.log10(y)
-        ax.text(x + 0.15, y, label, color=color, fontsize=8,
+        ax.text(x + 0.15, y, label, color=color, fontsize=9,
                 ha='left', va='center', fontweight='medium')
 
     ax.set_yscale('log')
     ax.set_xticks(list(x_index.values()))
-    ax.set_xticklabels(DATASET_ORDER, rotation=20, ha='right', fontsize=10)
-    ax.tick_params(axis='y', labelsize=10)
-    ax.set_xlim(-0.3, len(DATASET_ORDER) - 1 + 2.4)
+    ax.set_xticklabels(DATASET_ORDER, rotation=20, ha='right', fontsize=11)
+    ax.tick_params(axis='y', labelsize=11)
+    ax.set_xlim(-0.3, len(DATASET_ORDER) - 1 + 3.0)
 
     # Snap ylim to the nearest TIME_TICKS around the data range BEFORE
     # the FixedLocator runs, so all our labels are visible.
@@ -257,7 +250,7 @@ def _plot_panel_runtime(ax: plt.Axes, agg: pd.DataFrame) -> None:
 
     # Tick labels self-explanatory; no x-axis title.
     ax.set_xlabel('')
-    ax.set_ylabel('Wall time')
+    ax.set_ylabel('Wall time', fontsize=11)
 
 
 def _plot_panel_speedup(ax: plt.Axes, agg: pd.DataFrame) -> None:    # noqa: ARG001
@@ -394,8 +387,9 @@ def main() -> None:
     if agg.empty:
         raise SystemExit(f'No runtimes in {args.tsv}. Run cluster jobs first.')
 
-    # 7.25 in = full-column journal width.
-    fig, ax = plt.subplots(figsize=(7.25, 4.0), constrained_layout=True)
+    # 7.25 in × 4.8 in — full journal column, slightly taller than
+    # default so the 8 line labels at right have room to stagger.
+    fig, ax = plt.subplots(figsize=(7.25, 4.8), constrained_layout=True)
     _plot_panel_runtime(ax, agg)
     # `trim=True` clips the spine to the visible tick range, which with
     # our FixedLocator hides labels above the data extent. Keep the

@@ -104,6 +104,19 @@ def parse(runtime_dir: Path) -> pd.DataFrame:
         print(f'  dropping {bad_seed.sum()} rows with malformed seed')
         df = df[~bad_seed]
 
+    # Drop implausibly fast non-braincoder rows. A popeye/afni/mrvista
+    # cell finishing in <30s on any of our datasets is a container
+    # crash that the wrapper logged as exit-0; smallgrid (490 voxels)
+    # is the smallest input we have and the genuine wall floor on it
+    # is ~30s native (popeye/parallel32) or ~2 min for the MATLAB
+    # fitters. Anything below that is noise.
+    wall = pd.to_numeric(df['wall_seconds'], errors='coerce')
+    bogus_fast = (df['package'] != 'braincoder') & (wall < 30)
+    if bogus_fast.any():
+        print(f'  dropping {bogus_fast.sum()} non-braincoder rows with '
+              f'wall_seconds < 30 (silent container failures)')
+        df = df[~bogus_fast]
+
     # Join dataset metadata.
     meta = pd.DataFrame.from_dict(DATASET_META, orient='index').reset_index().rename(
         columns={'index': 'dataset'}
