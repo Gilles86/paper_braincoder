@@ -129,34 +129,43 @@ def _aggregate(
     return agg
 
 
+_PKG_DISPLAY = {
+    'afni':       'AFNI',
+    'popeye':     'Popeye',
+    'mrvista':    'mrVista',
+    'braincoder': 'Braincoder',
+}
+
+
 def _line_label(package: str, hardware: str, variant: str) -> str:
-    """Short label for endpoint annotation."""
-    # Tag the popeye parallel-runner variants distinctly from upstream serial.
+    """Short label for endpoint annotation.
+
+    House style: first letter capitalized except where the upstream
+    package preserves its own casing (mrVista). Acronyms stay
+    upper-case (AFNI, CPU, A100).
+    """
+    pkg = _PKG_DISPLAY.get(package, package.capitalize())
     if package == 'popeye' and isinstance(variant, str) and variant.startswith('parallel'):
-        return f'popeye ({variant})'
+        # parallel32 → "Popeye (32 cpu)" — clearer than the bare suffix.
+        n = variant.replace('parallel', '')
+        return f'{pkg} ({n} cpu)' if n else f'{pkg} (parallel)'
+    if package == 'popeye' and variant == 'default':
+        return f'{pkg} (1 cpu)'
     if package == 'braincoder':
         hw_pretty = {
-            'cpu32': 'CPU',
-            'a100':  'A100',
-            'h100':  'H100',
-            'h200':  'H200',
-            'l4':    'L4',
-            'v100':  'V100',
-            'gpu':   'GPU',
+            'cpu32': 'CPU', 'cpu16': 'CPU16', 'cpu8': 'CPU8',
+            'a100':  'A100', 'h100': 'H100', 'h200': 'H200',
+            'l4':    'L4',   'v100': 'V100', 'gpu':  'GPU',
+            'm1_pro': 'M1 Pro',
         }.get(hardware, hardware)
-        # Spell the grid-vs-GD distinction so the reader sees why
-        # 'grid + GD' isn't strictly slower than 'grid only': the GD
-        # variant uses a sparser grid (~4× fewer candidates) and lets
-        # gradient descent refine. Without that note the two lines
-        # look paradoxical on the same axis.
         var_pretty = {
-            'grid': 'dense grid, no GD',
-            'full': 'coarse grid + GD',
-            'hrf':  'coarse grid + GD + HRF',
+            'grid': 'grid',           # dense grid, no GD
+            'full': 'GD',             # coarse grid + GD
+            'hrf':  'GD + HRF',
             'dn':   'DN',
         }.get(variant, variant)
-        return f'braincoder, {hw_pretty} ({var_pretty})'
-    return package
+        return f'{pkg}, {hw_pretty} ({var_pretty})'
+    return pkg
 
 
 def _plot_panel_runtime(ax: plt.Axes, agg: pd.DataFrame) -> None:
@@ -190,15 +199,16 @@ def _plot_panel_runtime(ax: plt.Axes, agg: pd.DataFrame) -> None:
                 color=color, alpha=0.18, lw=0, zorder=1,
             )
 
-        # Per-point duration labels. CPU lines go above the marker, GPU
-        # lines below — separates the two grid lines at every dataset
-        # (cpu32/grid and a100/grid overlap heavily in y).
+        # Per-point duration labels — only at first and last x position.
+        # Showing every datapoint produced overlapping clouds at the
+        # synth-grid columns where many lines crowd at <1 min.
         if hw.startswith('cpu'):
             offset, va = (0, 7), 'bottom'
         else:
             offset, va = (0, -7), 'top'
+        xs_to_annotate = {xs[0], xs[-1]}
         for xi, mean in zip(xs, grp['mean']):
-            if pd.notna(mean):
+            if pd.notna(mean) and xi in xs_to_annotate:
                 ax.annotate(
                     _format_duration(float(mean)),
                     xy=(xi, mean),
@@ -213,24 +223,23 @@ def _plot_panel_runtime(ax: plt.Axes, agg: pd.DataFrame) -> None:
         label = _line_label(pkg, hw, variant)
         label_positions.append((right_y, label, color, right_x))
 
-    # Stagger labels vertically when they would collide. With fewer
-    # lines we can afford a larger gap so labels don't crowd.
+    # Stagger labels vertically when they would collide.
     label_positions.sort(key=lambda t: t[0])
     last_y_log = -np.inf
-    min_log_gap = 0.16
+    min_log_gap = 0.10
     for y, label, color, x in label_positions:
         y_log = np.log10(y)
         if y_log - last_y_log < min_log_gap:
             y = 10 ** (last_y_log + min_log_gap)
         last_y_log = np.log10(y)
-        ax.text(x + 0.10, y, label, color=color, fontsize=9,
+        ax.text(x + 0.15, y, label, color=color, fontsize=8,
                 ha='left', va='center', fontweight='medium')
 
     ax.set_yscale('log')
     ax.set_xticks(list(x_index.values()))
     ax.set_xticklabels(DATASET_ORDER, rotation=20, ha='right', fontsize=10)
     ax.tick_params(axis='y', labelsize=10)
-    ax.set_xlim(-0.3, len(DATASET_ORDER) - 1 + 2.6)  # extra room on the right for labels
+    ax.set_xlim(-0.3, len(DATASET_ORDER) - 1 + 2.4)
 
     # Snap ylim to the nearest TIME_TICKS around the data range BEFORE
     # the FixedLocator runs, so all our labels are visible.
@@ -334,9 +343,10 @@ def main() -> None:
              'has its own figure).',
     )
     p.add_argument(
-        '--hardware', default='a100',
-        help='Which braincoder hardware tier to show alongside the '
-             "other packages: 'a100' or 'cpu32'. Default a100.",
+        '--hardware', default='cpu32,a100',
+        help='Comma-separated braincoder hardware tiers to show '
+             "alongside the other packages. Default 'cpu32,a100' "
+             '(both reference points so the GPU speedup is visible).',
     )
     p.add_argument(
         '--since', default='2026-05-26',
@@ -366,31 +376,26 @@ def main() -> None:
     #   - hardware: just args.hardware (one braincoder line, not two)
     #   - variant:  full only — dense-grid-no-GD belongs elsewhere
     #   - backend:  tensorflow
-    hw_subset  = None if args.all_hardware else [args.hardware]
-    var_subset = None if args.all_variants else ['full', 'default']
+    hw_subset = (None if args.all_hardware
+                 else [s.strip() for s in args.hardware.split(',')])
+    var_subset = None if args.all_variants else ['full', 'grid', 'default']
     bk_subset  = None if args.all_backends else ['tensorflow', 'native']
     # Keep popeye's parallel variants in the figure alongside grid/full.
+    # Both popeye/default (serial, 1 cpu) AND popeye/parallel32 stay
+    # in — they're meaningfully different cells in the speedup story.
     if var_subset is not None:
         var_subset = var_subset + [
             v for v in df['variant'].dropna().unique()
             if isinstance(v, str) and v.startswith('parallel')
         ]
-        # When multiple popeye variants exist for the same cell, prefer
-        # the parallel one (it's the recommended runner).
-        pop_parallel = df[(df['package'] == 'popeye')
-                          & df['variant'].astype(str).str.startswith('parallel')]
-        if not pop_parallel.empty:
-            df = pd.concat([
-                df[df['package'] != 'popeye'],
-                pop_parallel,
-            ], ignore_index=True)
 
     agg = _aggregate(df, hardware_subset=hw_subset,
                      variant_subset=var_subset, backend_subset=bk_subset)
     if agg.empty:
         raise SystemExit(f'No runtimes in {args.tsv}. Run cluster jobs first.')
 
-    fig, ax = plt.subplots(figsize=(7.0, 3.8), constrained_layout=True)
+    # 7.25 in = full-column journal width.
+    fig, ax = plt.subplots(figsize=(7.25, 4.0), constrained_layout=True)
     _plot_panel_runtime(ax, agg)
     # `trim=True` clips the spine to the visible tick range, which with
     # our FixedLocator hides labels above the data extent. Keep the
