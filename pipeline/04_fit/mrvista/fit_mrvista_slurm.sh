@@ -23,10 +23,18 @@ SIF_IMAGE=/shares/zne.uzh/containers/prfanalyze-vista-fixed.sif
 echo "[fit_mrvista_slurm] identifier=$IDENTIFIER seed=$SEED  cpus=${SLURM_CPUS_PER_TASK:-?}"
 
 START=$SECONDS
+# Bind-mount our patched /scripts/run.py over the container's. The
+# upstream copy has an undefined ``opts_file`` on the isPRFSynthData
+# path that triggers a misleading "Failed to exec /solve.sh script!"
+# message and produces no output. See upstream_patch/run.py for the
+# fix + comment.
+PATCHED_RUN_PY="$PWD/upstream_patch/run.py"
+
 apptainer exec --cleanenv --writable-tmpfs \
     --bind "$OUTPUT_DIR:/flywheel/v0/input" \
     --bind "$OUTPUT_DIR:/flywheel/v0/output" \
     --bind "$CONFIG_FILE:/flywheel/v0/input/config.json" \
+    --bind "$PATCHED_RUN_PY:/scripts/run.py" \
     "$SIF_IMAGE" \
     /flywheel/v0/run.sh
 DURATION=$((SECONDS - START))
