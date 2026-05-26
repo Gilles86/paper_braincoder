@@ -59,6 +59,14 @@ parser.add_argument('--save-cost-history', dest='save_cost_history',
                     '(ParameterFitter.r2_history_) next to the output NIfTIs. '
                     'Used to diagnose whether the early-stop defaults '
                     '(r2_atol=1e-6, lag=100) plateaued correctly.')
+parser.add_argument('--r2-atol', dest='r2_atol', type=float, default=1e-4,
+                    help='Early-stop tolerance: GD halts once mean-best R² '
+                    'has improved less than this over the last LAG=100 '
+                    'iterations. Braincoder default is 1e-6 but the '
+                    'vanes2019 convergence A/B (see notes/figures/'
+                    'fig_convergence_delta.pdf) shows the curve is still '
+                    'descending at 1e-5 even after 10k iter — 1e-4 cuts '
+                    '~3x wall-time at <0.001 R² cost.')
 
 args = parser.parse_args()
 print(args)
@@ -227,12 +235,12 @@ else:
         par_fitter_dn = ParameterFitter(model=model_dn, data=data, paradigm=paradigm)
         # Without HRF
         pars_dn = par_fitter_dn.fit(init_pars=pars_dn_init, max_n_iterations=n_gd_iterations,
-                                     noise_model=args.noise_model)
+                                     noise_model=args.noise_model, r2_atol=args.r2_atol)
         final_pars = pars_dn.copy()
 
     else:
         pars_gauss_gd = par_fitter.fit(init_pars=pars_gauss_ols, max_n_iterations=n_gd_iterations,
-                                        noise_model=args.noise_model)
+                                        noise_model=args.noise_model, r2_atol=args.r2_atol)
         final_pars = pars_gauss_gd
 
 r2_gauss_gd = par_fitter.get_rsq(final_pars)
@@ -288,6 +296,7 @@ if args.save_cost_history:
         dn_gd=np.asarray(history_dn) if history_dn is not None else np.array([]),
         noise_model=args.noise_model,
         max_n_iterations=n_gd_iterations,
+        r2_atol=args.r2_atol,
     )
     print(f'WROTE_HISTORY: {history_path}  '
           f'(gauss_gd_len={0 if history is None else len(history)}, '
