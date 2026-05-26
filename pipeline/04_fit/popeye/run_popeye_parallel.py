@@ -85,13 +85,17 @@ def _fit_voxel(args):
     x_grid = (-width / 2, width / 2)
     y_grid = (-height / 2, height / 2)
     s_grid = (1 / stimulus.ppd + 0.25, 5.25)
-    h_grid = (-1.0, 1.0)
+    # FAIRNESS FIX: lock the HRF delay so popeye is a 5-parameter
+    # model matching braincoder full / mrVista / AFNI (x, y, σ, β,
+    # baseline) instead of the 6-parameter default (+ hrfdelay). Tight
+    # bound around 0 prevents the nonlinear refinement from moving it.
+    h_grid = (-1e-3, 1e-3)
     x_bound = (-width, width)
     y_bound = (-height, height)
     s_bound = (1 / stimulus.ppd, 12.0)
     b_bound = (1e-8, None)
     u_bound = (None, None)
-    h_bound = (-3.0, 3.0)
+    h_bound = (-1e-3, 1e-3)
     grids = (x_grid, y_grid, s_grid, h_grid)
     bounds = (x_bound, y_bound, s_bound, h_bound, b_bound, u_bound)
 
