@@ -26,6 +26,7 @@ NOISE_MODEL=${7:-gaussian}
 # Translate hardware → SBATCH resources. Memory is set generously to
 # cover the largest dataset (vanes2019 × DN); shrink later if queue
 # pressure makes it worth it.
+PARTITION=""
 case "$HARDWARE" in
     cpu | cpu32)  GRES=""; CPUS=32; MEM=32G ;;
     cpu16)        GRES=""; CPUS=16; MEM=32G ;;
@@ -35,7 +36,11 @@ case "$HARDWARE" in
     h100)         GRES="--gres=gpu:H100:1"; CPUS=8;  MEM=64G ;;
     h200)         GRES="--gres=gpu:H200:1"; CPUS=8;  MEM=64G ;;
     l4)           GRES="--gres=gpu:L4:1";   CPUS=8;  MEM=32G ;;
-    v100)         GRES="--gres=gpu:V100:1"; CPUS=8;  MEM=32G ;;
+    # V100 hardware on UZH sciencecluster lives ONLY on the lowprio
+    # partition (sinfo shows it's not in standard). lowprio means jobs
+    # are preemptible by standard-partition jobs, but for a short
+    # benchmark cell (~15-20 min on vanes2019) eviction is unlikely.
+    v100)         GRES="--gres=gpu:V100:1"; CPUS=8;  MEM=32G; PARTITION="--partition=lowprio" ;;
     *) echo "Unknown hardware: $HARDWARE"; exit 1 ;;
 esac
 
@@ -55,7 +60,7 @@ JOBNAME="bc.${HARDWARE}.${BACKEND}.${VARIANT}.${DATASET}.s${SEED}"
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
 set -x
-sbatch $GRES \
+sbatch $GRES $PARTITION \
     --time="$TIME" \
     --cpus-per-task="$CPUS" \
     --mem="$MEM" \
