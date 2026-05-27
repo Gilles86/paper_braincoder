@@ -337,12 +337,13 @@ else:
                 # filter(function, iterable)nd all files that match the input from config.json
                 bold_images = glob.glob(os.path.join(func_dir, f'sub-{sub}_ses-{ses}_task-{taskS}_run-*_hemi-*_bold.nii.gz'))
                 # No-prfprepare fallback: raw BIDS data doesn't have
-                # the _hemi-?_ tag — accept hemi-less filenames.
+                # the _hemi-?_ tag and may carry extra BIDS entities
+                # between task and run (e.g., _acq-normal_). Use a
+                # permissive glob and post-filter out prfprepare hits.
                 if _PB_NO_PRFPREP and not bold_images:
                     bold_images = glob.glob(os.path.join(
                         func_dir,
-                        f'sub-{sub}_ses-{ses}_task-{taskS}_run-*_bold.nii.gz'))
-                    # exclude any prfprepare-style hits to avoid double-counting
+                        f'sub-{sub}_ses-{ses}_task-{taskS}_*_bold.nii.gz'))
                     bold_images = [b for b in bold_images if '_hemi-' not in b]
 
                 print(bold_images)
