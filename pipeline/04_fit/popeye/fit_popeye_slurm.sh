@@ -20,6 +20,18 @@ CONFIG_FILE=$PWD/configs/prfanalyze-popeye-${IDENTIFIER}.json
 OUTPUT_DIR=/shares/zne.uzh/gdehol/ds-prfsynth
 SIF_IMAGE=/shares/zne.uzh/containers/prfanalyze-popeye.sif
 
+# Upstream container's /flywheel/v0/run.sh BIDSifies outputs by
+# prepending sub-X_ses-Y_task-prf_ to every .nii.gz in the output
+# directory. If files from a previous rerun linger, the loop prepends
+# ANOTHER copy of the prefix on top — stacking to 4/6/8-deep across
+# multiple reruns and breaking collect_r2's canonical-name lookup.
+# Pre-cleaning the per-cell dir prevents the stacking.
+POPEYE_OUT="$OUTPUT_DIR/BIDS/derivatives/prfanalyze-popeye/sub-${IDENTIFIER}/ses-1"
+if [ -d "$POPEYE_OUT" ]; then
+    echo "[fit_popeye_slurm] cleaning stale outputs in $POPEYE_OUT"
+    rm -rf "$POPEYE_OUT"
+fi
+
 echo "[fit_popeye_slurm] identifier=$IDENTIFIER seed=$SEED  cpus=${SLURM_CPUS_PER_TASK:-?}"
 
 START=$SECONDS
