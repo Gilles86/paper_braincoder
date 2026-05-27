@@ -94,6 +94,14 @@ case "$HARDWARE" in
 esac
 export KERAS_BACKEND="$BACKEND"
 
+# Torch's default CUDA allocator fragments quickly on long-running
+# braincoder GD loops and OOMs at ~75 GB of 80 GB on vanes2019.
+# `expandable_segments:True` keeps the allocator from reserving
+# fixed-size segments and reduces effective fragmentation.
+if [ "$BACKEND" = "torch" ]; then
+    export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+fi
+
 conda activate "$ENV_NAME"
 
 # --- compose CLI extras -------------------------------------------------

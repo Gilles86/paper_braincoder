@@ -218,7 +218,12 @@ else:
 
         pars_dn_init = pars_gauss_ols.copy()
 
-        pars_dn_init.rename(columns={'baseline':'bold_baseline', 'amplitude':'rf_amplitude'})
+        # NB: pd.DataFrame.rename returns a new frame and is NOT in-place
+        # by default — the previous code dropped the rename silently
+        # and downstream _get_parameters crashed with
+        # "KeyError: ['rf_amplitude', 'bold_baseline'] not in index".
+        pars_dn_init = pars_dn_init.rename(
+            columns={'baseline': 'bold_baseline', 'amplitude': 'rf_amplitude'})
         pars_dn_init['srf_amplitude'] = 0.01
         pars_dn_init['srf_size'] = 2.5
         pars_dn_init['neural_baseline'] = 1.0
