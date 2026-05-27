@@ -244,6 +244,20 @@ else:
     # define the prfprepare folder
     prfprep_dir = os.path.join(bids_dir, 'derivatives', 'prfprepare', f'analysis-{prfprep_analyis}')
 
+    # UPSTREAM EXTENSION (paper_braincoder):
+    # The upstream container expects a prfprepare-preprocessed
+    # derivative under derivatives/prfprepare/analysis-XX with
+    # per-hemisphere BOLD files (sub-*_ses-*_task-*_run-*_hemi-*_bold.nii.gz).
+    # On datasets without that derivative (e.g., vanes2019 in this
+    # benchmark) we fall back to the raw BIDS func/ directory and
+    # accept hemi-less files. ``_PB_NO_PRFPREP`` flips downstream
+    # glob patterns to match.
+    _PB_NO_PRFPREP = not os.path.isdir(prfprep_dir)
+    if _PB_NO_PRFPREP:
+        print(f'[base/run.py] prfprepare derivative missing at '
+              f'{prfprep_dir}; falling back to raw BIDS func/.')
+        prfprep_dir = bids_dir
+
     # find the subjects
     s  = conf['subjectName'].split(']')[0].split('[')[-1].split(',')
     if s[0] == 'all':
@@ -322,6 +336,14 @@ else:
                 note(f'task used in the glob command is {taskS}')
                 # filter(function, iterable)nd all files that match the input from config.json
                 bold_images = glob.glob(os.path.join(func_dir, f'sub-{sub}_ses-{ses}_task-{taskS}_run-*_hemi-*_bold.nii.gz'))
+                # No-prfprepare fallback: raw BIDS data doesn't have
+                # the _hemi-?_ tag — accept hemi-less filenames.
+                if _PB_NO_PRFPREP and not bold_images:
+                    bold_images = glob.glob(os.path.join(
+                        func_dir,
+                        f'sub-{sub}_ses-{ses}_task-{taskS}_run-*_bold.nii.gz'))
+                    # exclude any prfprepare-style hits to avoid double-counting
+                    bold_images = [b for b in bold_images if '_hemi-' not in b]
 
                 print(bold_images)
                 print(len(bold_images))
@@ -331,8 +353,17 @@ else:
                     # find all run numbers and bold images
                     flnm  = os.path.basename(bold_image)
                     task  = flnm.split('task-')[-1].split('_run' )[0]
-                    runid = flnm.split('run-' )[-1].split('_hemi')[0]
-                    hemi  = flnm.split('hemi-')[-1].split('_bold')[0]
+                    # Hemi-less raw BIDS file: runid runs to '_bold',
+                    # hemi is the sentinel 'whole'.
+                    if '_hemi-' in flnm:
+                        runid = flnm.split('run-' )[-1].split('_hemi')[0]
+                        hemi  = flnm.split('hemi-')[-1].split('_bold')[0]
+                    else:
+                        runid = flnm.split('run-' )[-1].split('_bold')[0]
+                        # Strip BIDS entities that may sit between
+                        # run-XX and _bold (e.g., _acq-normal).
+                        runid = runid.split('_')[0]
+                        hemi  = 'whole'
 
                     # check if outptut already exists
                     resflo = os.path.join(outbids_dir, f'sub-{sub}_ses-{ses}_task-{task}_run-{runid}_hemi-{hemi}_results.mat')
@@ -358,7 +389,13 @@ else:
                     if len(stim_file) != 1:
                         die("Multiple stimulus files found in events file (%s)" % events_file)
                     stims_dir = os.path.join(prfprep_dir, f'sub-{sub}', 'stimuli')
-                    stim_file = os.path.join(stims_dir, list(stim_file)[0])
+                    stim_file_name = list(stim_file)[0]
+                    stim_file = os.path.join(stims_dir, stim_file_name)
+                    # No-prfprepare fallback: BIDS-spec stimuli live
+                    # at <bids_dir>/stimuli/ , not under a per-subject
+                    # subfolder.
+                    if _PB_NO_PRFPREP and not os.path.isfile(stim_file):
+                        stim_file = os.path.join(bids_dir, 'stimuli', stim_file_name)
                     if not os.path.isfile(stim_file):
                         die("Stimulus file (%s) not found" % stim_file)
 
