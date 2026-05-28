@@ -97,6 +97,15 @@ def parse(runtime_dir: Path) -> pd.DataFrame:
     df.loc[(df['package'] == 'afni') & (df['dataset'] == 'vanes2019afni'),
            'dataset'] = 'vanes2019'
 
+    # AFNI's MCR R2018b and mrVista's MCR R2020b both segfault silently
+    # on NaN voxels. vanes2019 packs the cortical surface as 1D with
+    # NaN padding outside the gray-matter mask (21% NaN). We prepared
+    # a NaN-free copy at sub-vanes2019afninonan (93 312 voxels reshaped
+    # to (288, 324, 1, 120)) that AFNI and mrVista can both consume.
+    # Alias the dataset name back to 'vanes2019' so the figure line is
+    # continuous; the caption notes the NaN-dropped voxel count.
+    df.loc[df['dataset'] == 'vanes2019afninonan', 'dataset'] = 'vanes2019'
+
     # Drop rows where the seed field was clobbered by the SEEDS array
     # bug (literal "1 2 3" string instead of int).
     bad_seed = df['seed'].astype(str).str.contains(' ')
