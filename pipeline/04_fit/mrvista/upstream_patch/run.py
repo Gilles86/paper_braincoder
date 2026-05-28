@@ -353,7 +353,10 @@ else:
 
                     # find all run numbers and bold images
                     flnm  = os.path.basename(bold_image)
-                    task  = flnm.split('task-')[-1].split('_run' )[0]
+                    # Task is just the value of the task- entity, not
+                    # everything up to _run-. Strip downstream BIDS
+                    # entities (acq, dir, ...) by splitting on '_'.
+                    task  = flnm.split('task-')[-1].split('_')[0]
                     # Hemi-less raw BIDS file: runid runs to '_bold',
                     # hemi is the sentinel 'whole'.
                     if '_hemi-' in flnm:

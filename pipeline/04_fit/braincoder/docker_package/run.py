@@ -248,8 +248,18 @@ else:
                                         noise_model=args.noise_model, r2_atol=args.r2_atol)
         final_pars = pars_gauss_gd
 
-r2_gauss_gd = par_fitter.get_rsq(final_pars)
-pred = model_gauss.predict(parameters=final_pars)
+# Route the R² / prediction computation through the DN model+fitter
+# when DN is active — final_pars has the DN column names
+# (bold_baseline, rf_amplitude, srf_*, neural_baseline, ...) which
+# the standard Gauss model can't index. Previously the script always
+# used model_gauss/par_fitter, so DN fits ran for 30-60 min on GPU
+# and then crashed in the post-fit R² step.
+if opts.get('fitting', {}).get('divisive_normalisation', False):
+    r2_gauss_gd = par_fitter_dn.get_rsq(final_pars)
+    pred = model_dn.predict(parameters=final_pars)
+else:
+    r2_gauss_gd = par_fitter.get_rsq(final_pars)
+    pred = model_gauss.predict(parameters=final_pars)
 
 fit_seconds = time.time() - fit_t0
 print(f'INTERNAL_FIT_TIME: {fit_seconds:.2f} seconds')
