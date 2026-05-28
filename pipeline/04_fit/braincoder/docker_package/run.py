@@ -117,6 +117,22 @@ if args.debug:
 else:
     mask_data = np.ones(im.shape[:-1])
 
+# Drop NaN voxels. vanes2019 has ~21% NaN voxels (cortical-surface
+# layout, padded with NaN outside the gray-matter mask). braincoder's
+# meaningful-voxel mask zeroes their loss contribution but still
+# computes predictions + gradients for them every iteration — pure
+# waste. Excluding them shrinks the trainable parameter tensor and
+# saves a corresponding share of forward+backward time. Also helps
+# AFNI/mrVista whose MATLAB binaries crash on NaN propagation.
+im_data = np.asanyarray(im.dataobj)
+nan_per_vox = np.isnan(im_data).any(axis=-1)
+if nan_per_vox.any():
+    n_nan = int(nan_per_vox.sum())
+    mask_data = mask_data * (~nan_per_vox).astype(mask_data.dtype)
+    print(f'Dropped {n_nan} NaN voxels '
+          f'({n_nan / nan_per_vox.size * 100:.1f}% of input); '
+          f'kept {int(mask_data.sum())}')
+
 # Create a new image with the mask
 mask = image.new_img_like(im, mask_data)
 
